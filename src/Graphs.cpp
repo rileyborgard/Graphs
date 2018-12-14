@@ -1,30 +1,61 @@
 
 #include <iostream>
 #include <GL/freeglut.h>
+#include <cmath>
 
 using namespace std;
 
-const int width = 800;
-const int height = 600;
+int width = 800;
+int height = 600;
 
 void init() {
-	// set clear color to 20% gray
 	glClearColor(0.0f, 0.0f, 0.0f, 1.f);
 	glPointSize(4.0f);
-	glMatrixMode(GL_PROJECTION);    //coordinate system
-	//glLoadIdentity();
-	gluOrtho2D(0.0, width, 0.0, height);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0.0, 1.0, 0.0, 1.0);
+}
+
+void fillCircle(float x, float y, float r, int n) {
+	glBegin(GL_TRIANGLE_FAN);
+	for(int i = 0; i < n; i++) {
+		glVertex2f(x + r * cos((2 * M_PI) * i / n), y + r * sin((2 * M_PI) * i / n));
+	}
+
+	glEnd();
+}
+
+void drawCircle(float x, float y, float r, int n) {
+	glBegin(GL_LINE_LOOP);
+
+	for(int i = 0; i < n; i++) {
+		glVertex2f(x + r * cos((2 * M_PI) * i / n), y + r * sin((2 * M_PI) * i / n));
+	}
+
+	glEnd();
 }
 
 void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glMatrixMode(GL_PROJECTION);
+	glColor3f(1, 0, 0);
+	fillCircle(width / 2, height / 2, 100, 30);
 
 	glFlush();
 	glutSwapBuffers();
 }
 
 void mouse_press(int button, int state, int x, int y) {
+}
 
+void resize(int w, int h) {
+	width = w;
+	height = h;
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluOrtho2D(0.0, width, height, 0.0);
+	glViewport(0,0,width,height);
 }
 
 int main(int argc, char **argv) {
@@ -39,11 +70,10 @@ int main(int argc, char **argv) {
 
 	init();
 	glutMouseFunc(mouse_press);
+	glutReshapeFunc(resize);
 
-	// set empty display function
 	glutDisplayFunc(display);
 
-	// start glut loop
 	glutMainLoop();
 
 	return 0;
