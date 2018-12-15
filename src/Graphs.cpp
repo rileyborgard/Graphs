@@ -2,11 +2,15 @@
 #include <iostream>
 #include <GL/freeglut.h>
 #include <cmath>
+#include <Graph.h>
+#include <set>
 
 using namespace std;
 
 int width = 800;
 int height = 600;
+
+Graph graph;
 
 void init() {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.f);
@@ -14,6 +18,10 @@ void init() {
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluOrtho2D(0.0, 1.0, 0.0, 1.0);
+
+	graph.insert(100, 100);
+	graph.insert(300, 200);
+	graph.insert(200, 100);
 }
 
 void fillCircle(float x, float y, float r, int n) {
@@ -40,7 +48,10 @@ void display() {
 
 	glMatrixMode(GL_PROJECTION);
 	glColor3f(1, 0, 0);
-	fillCircle(width / 2, height / 2, 100, 30);
+
+	for(Vertex *v : graph.vertices) {
+		fillCircle(v->x, v->y, 10, 10);
+	}
 
 	glFlush();
 	glutSwapBuffers();
