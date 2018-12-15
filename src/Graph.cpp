@@ -26,3 +26,13 @@ void Graph::remove(Vertex *v) {
 	}
 	vertices.erase(v);
 }
+
+void Graph::setConnected(Vertex *v, Vertex *w, bool b) {
+	if(b) {
+		v->adj.insert(w);
+		w->adj.insert(v);
+	}else {
+		v->adj.erase(w);
+		w->adj.erase(v);
+	}
+}

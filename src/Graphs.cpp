@@ -19,9 +19,13 @@ void init() {
 	glLoadIdentity();
 	gluOrtho2D(0.0, 1.0, 0.0, 1.0);
 
-	graph.insert(100, 100);
-	graph.insert(300, 200);
-	graph.insert(200, 100);
+	Vertex *v1 = graph.insert(100, 100);
+	Vertex *v2 = graph.insert(300, 200);
+	Vertex *v3 = graph.insert(200, 100);
+
+	graph.setConnected(v1, v2, true);
+	graph.setConnected(v2, v3, true);
+	graph.setConnected(v3, v1, false);
 }
 
 void fillCircle(float x, float y, float r, int n) {
@@ -47,8 +51,18 @@ void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glMatrixMode(GL_PROJECTION);
-	glColor3f(1, 0, 0);
 
+	glBegin(GL_LINES);
+	glColor3f(1, 1, 1);
+	for(Vertex *v : graph.vertices) {
+		for(Vertex *w : v->adj) {
+			glVertex2f(v->x, v->y);
+			glVertex2f(w->x, w->y);
+		}
+	}
+	glEnd();
+
+	glColor3f(1, 0, 0);
 	for(Vertex *v : graph.vertices) {
 		fillCircle(v->x, v->y, 10, 10);
 	}

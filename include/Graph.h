@@ -20,6 +20,8 @@ public:
 	Vertex *insert(float x, float y);
 	void remove(Vertex *v);
 
+	void setConnected(Vertex *v, Vertex *w, bool b);
+
 	set<Vertex*> vertices;
 };
 
