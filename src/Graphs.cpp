@@ -12,6 +12,14 @@ int height = 600;
 
 Graph graph;
 
+float vertRadius = 16;
+float lineWidth = 3;
+int vertPrecision = 30;
+
+bool vPress = false;
+float mouseX;
+float mouseY;
+
 void init() {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.f);
 	glPointSize(4.0f);
@@ -19,13 +27,20 @@ void init() {
 	glLoadIdentity();
 	gluOrtho2D(0.0, 1.0, 0.0, 1.0);
 
-	Vertex *v1 = graph.insert(100, 100);
-	Vertex *v2 = graph.insert(300, 200);
-	Vertex *v3 = graph.insert(200, 100);
+	// Turn on antialiasing, and give hint to do the best
+	// job possible.
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
 
-	graph.setConnected(v1, v2, true);
-	graph.setConnected(v2, v3, true);
-	graph.setConnected(v3, v1, false);
+	//glEnable(GL_POINT_SMOOTH);
+	//glHint(GL_POINT_SMOOTH_HINT, GL_FASTEST);
+
+	glEnable(GL_LINE_SMOOTH);
+	glHint(GL_LINE_SMOOTH_HINT, GL_FASTEST);
+
+	//glEnable(GL_POLYGON_SMOOTH);
+	//glHint(GL_POLYGON_SMOOTH_HINT, GL_FASTEST);
+
 }
 
 void fillCircle(float x, float y, float r, int n) {
@@ -51,7 +66,7 @@ void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glMatrixMode(GL_PROJECTION);
-
+	glLineWidth(lineWidth);
 	glBegin(GL_LINES);
 	glColor3f(1, 1, 1);
 	for(Vertex *v : graph.vertices) {
@@ -62,9 +77,16 @@ void display() {
 	}
 	glEnd();
 
-	glColor3f(1, 0, 0);
 	for(Vertex *v : graph.vertices) {
-		fillCircle(v->x, v->y, 10, 10);
+		glColor3f(1, 0, 0);
+		fillCircle(v->x, v->y, vertRadius, vertPrecision);
+		glColor3f(1, 1, 1);
+		drawCircle(v->x, v->y, vertRadius, vertPrecision);
+	}
+
+	if(vPress) {
+		glColor3f(1, 1, 0);
+		drawCircle(mouseX, mouseY, vertRadius, vertPrecision);
 	}
 
 	glFlush();
@@ -72,6 +94,8 @@ void display() {
 }
 
 void mouse_press(int button, int state, int x, int y) {
+	mouseX = x;
+	mouseY = y;
 	if(state == GLUT_DOWN) {
 		if(button == GLUT_LEFT_BUTTON) {
 			graph.insert(x, y);
@@ -81,6 +105,29 @@ void mouse_press(int button, int state, int x, int y) {
 				graph.remove(v);
 			}
 		}
+	}
+}
+void mouse_move(int x, int y) {
+	mouseX = x;
+	mouseY = y;
+	display();
+}
+void mouse_drag(int x, int y) {
+	mouseX = x;
+	mouseY = y;
+	display();
+}
+
+void key_press(unsigned char key, int x, int y) {
+	if(key == 'v') {
+		vPress = true;
+		display();
+	}
+}
+void key_release(unsigned char key, int x, int y) {
+	if(key == 'v') {
+		vPress = false;
+		display();
 	}
 }
 
@@ -105,6 +152,10 @@ int main(int argc, char **argv) {
 
 	init();
 	glutMouseFunc(mouse_press);
+	glutPassiveMotionFunc(mouse_move);
+	glutMotionFunc(mouse_drag);
+	glutKeyboardFunc(key_press);
+	glutKeyboardUpFunc(key_release);
 	glutReshapeFunc(resize);
 
 	glutDisplayFunc(display);
