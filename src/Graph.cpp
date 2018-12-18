@@ -27,6 +27,16 @@ void Graph::remove(Vertex *v) {
 	vertices.erase(v);
 }
 
+Vertex * Graph::getVertex(float x, float y, float r) {
+	for(Vertex *v : vertices) {
+		float dist = (v->x - x) * (v->x - x) + (v->y - y) * (v->y - y);
+		if(dist < r * r) {
+			return v;
+		}
+	}
+	return NULL;
+}
+
 void Graph::setConnected(Vertex *v, Vertex *w, bool b) {
 	if(b) {
 		v->adj.insert(w);

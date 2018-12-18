@@ -72,6 +72,16 @@ void display() {
 }
 
 void mouse_press(int button, int state, int x, int y) {
+	if(state == GLUT_DOWN) {
+		if(button == GLUT_LEFT_BUTTON) {
+			graph.insert(x, y);
+		}else if(button == GLUT_RIGHT_BUTTON) {
+			Vertex *v = graph.getVertex(x, y, 10);
+			if(v != NULL) {
+				graph.remove(v);
+			}
+		}
+	}
 }
 
 void resize(int w, int h) {
