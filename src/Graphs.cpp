@@ -78,7 +78,11 @@ void display() {
 	glEnd();
 
 	for(Vertex *v : graph.vertices) {
-		glColor3f(1, 0, 0);
+		if(v->selected) {
+			glColor3f(0, 0, 1);
+		}else {
+			glColor3f(1, 0, 0);
+		}
 		fillCircle(v->x, v->y, vertRadius, vertPrecision);
 		glColor3f(1, 1, 1);
 		drawCircle(v->x, v->y, vertRadius, vertPrecision);
@@ -98,9 +102,21 @@ void mouse_press(int button, int state, int x, int y) {
 	mouseY = y;
 	if(state == GLUT_DOWN) {
 		if(button == GLUT_LEFT_BUTTON) {
-			graph.insert(x, y);
+			if(vPress) {
+				// create vertex
+				Vertex *v = graph.insert(x, y);
+				graph.selectAll(false);
+				graph.select(v, true);
+			}else {
+				// select vertex
+				Vertex *v = graph.getVertex(x, y, vertRadius);
+				graph.selectAll(false);
+				if(v != NULL) {
+					graph.select(v, true);
+				}
+			}
 		}else if(button == GLUT_RIGHT_BUTTON) {
-			Vertex *v = graph.getVertex(x, y, 10);
+			Vertex *v = graph.getVertex(x, y, vertRadius);
 			if(v != NULL) {
 				graph.remove(v);
 			}
