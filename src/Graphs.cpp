@@ -141,10 +141,7 @@ void mouse_press(int button, int state, int x, int y) {
 				}
 			}
 		}else if(button == GLUT_RIGHT_BUTTON) {
-			Vertex *v = graph.getVertex(x, y, vertRadius);
-			if(v != NULL) {
-				graph.remove(v);
-			}
+
 		}
 	}else if(state == GLUT_UP) {
 		if(boxSelect) {
@@ -181,6 +178,10 @@ void mouse_drag(int x, int y) {
 void key_press(unsigned char key, int x, int y) {
 	if(key == 'v') {
 		vPress = true;
+	}else if(key == 'd') {
+		for(Vertex *v : graph.selected) {
+			graph.remove(v);
+		}
 	}else if(key == 1 && (glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
 		// Ctrl + A
 		if(graph.vertices.size() == graph.selected.size()) {
