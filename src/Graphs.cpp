@@ -19,6 +19,7 @@ int vertPrecision = 30;
 bool vPress = false;
 float mouseX;
 float mouseY;
+bool dragging = false;
 
 void init() {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.f);
@@ -107,12 +108,14 @@ void mouse_press(int button, int state, int x, int y) {
 				Vertex *v = graph.insert(x, y);
 				graph.selectAll(false);
 				graph.select(v, true);
+				dragging = true;
 			}else {
 				// select vertex
 				Vertex *v = graph.getVertex(x, y, vertRadius);
 				graph.selectAll(false);
 				if(v != NULL) {
 					graph.select(v, true);
+					dragging = true;
 				}
 			}
 		}else if(button == GLUT_RIGHT_BUTTON) {
@@ -121,6 +124,8 @@ void mouse_press(int button, int state, int x, int y) {
 				graph.remove(v);
 			}
 		}
+	}else if(state == GLUT_UP) {
+		dragging = false;
 	}
 }
 void mouse_move(int x, int y) {
@@ -129,6 +134,12 @@ void mouse_move(int x, int y) {
 	display();
 }
 void mouse_drag(int x, int y) {
+	if(dragging) {
+		for(Vertex *v : graph.selected) {
+			v->x += x - mouseX;
+			v->y += y - mouseY;
+		}
+	}
 	mouseX = x;
 	mouseY = y;
 	display();
