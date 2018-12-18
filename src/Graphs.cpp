@@ -127,7 +127,9 @@ void mouse_press(int button, int state, int x, int y) {
 			}else {
 				// select vertex
 				Vertex *v = graph.getVertex(x, y, vertRadius);
-				graph.selectAll(false);
+				if(!(glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
+					graph.selectAll(false);
+				}
 				if(v != NULL) {
 					graph.select(v, true);
 					dragging = true;
@@ -151,7 +153,6 @@ void mouse_press(int button, int state, int x, int y) {
 			float maxx = max(boxMouseX, mouseX);
 			float maxy = max(boxMouseY, mouseY);
 			set<Vertex*> verts = graph.getVertices(minx, miny, maxx, maxy);
-			graph.selectAll(false);
 			for(Vertex *v : verts) {
 				graph.select(v, true);
 			}
