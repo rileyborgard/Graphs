@@ -181,8 +181,15 @@ void mouse_drag(int x, int y) {
 void key_press(unsigned char key, int x, int y) {
 	if(key == 'v') {
 		vPress = true;
-		display();
+	}else if(key == 1 && (glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
+		// Ctrl + A
+		if(graph.vertices.size() == graph.selected.size()) {
+			graph.selectAll(false);
+		}else {
+			graph.selectAll(true);
+		}
 	}
+	display();
 }
 void key_release(unsigned char key, int x, int y) {
 	if(key == 'v') {
