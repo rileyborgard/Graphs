@@ -24,6 +24,9 @@ float boxMouseX;
 float boxMouseY;
 bool boxSelect = false;
 bool dragging = false;
+bool connecting = false;
+
+Vertex *connectVert;
 
 void init() {
 	glClearColor(0.0f, 0.0f, 0.0f, 1.f);
@@ -87,6 +90,22 @@ void display() {
 			glVertex2f(w->x, w->y);
 		}
 	}
+	if(connecting) {
+		Vertex *v = graph.getVertex(mouseX, mouseY, vertRadius);
+		if(v == NULL) {
+			glColor3f(1, 1, 0);
+			glVertex2f(connectVert->x, connectVert->y);
+			glVertex2f(mouseX, mouseY);
+		}else {
+			if(v->adj.find(connectVert) == v->adj.end()) {
+				glColor3f(0, 1, 0);
+			}else {
+				glColor3f(1, 0, 0);
+			}
+			glVertex2f(connectVert->x, connectVert->y);
+			glVertex2f(v->x, v->y);
+		}
+	}
 	glEnd();
 
 	for(Vertex *v : graph.vertices) {
@@ -141,21 +160,34 @@ void mouse_press(int button, int state, int x, int y) {
 				}
 			}
 		}else if(button == GLUT_RIGHT_BUTTON) {
-
+			connectVert = graph.getVertex(mouseX, mouseY, vertRadius);
+			if(connectVert != NULL) {
+				connecting = true;
+			}
 		}
 	}else if(state == GLUT_UP) {
-		if(boxSelect) {
-			float minx = min(boxMouseX, mouseX);
-			float miny = min(boxMouseY, mouseY);
-			float maxx = max(boxMouseX, mouseX);
-			float maxy = max(boxMouseY, mouseY);
-			set<Vertex*> verts = graph.getVertices(minx, miny, maxx, maxy);
-			for(Vertex *v : verts) {
-				graph.select(v, true);
+		if(button == GLUT_LEFT_BUTTON) {
+			if(boxSelect) {
+				float minx = min(boxMouseX, mouseX);
+				float miny = min(boxMouseY, mouseY);
+				float maxx = max(boxMouseX, mouseX);
+				float maxy = max(boxMouseY, mouseY);
+				set<Vertex*> verts = graph.getVertices(minx, miny, maxx, maxy);
+				for(Vertex *v : verts) {
+					graph.select(v, true);
+				}
+				boxSelect = false;
 			}
-			boxSelect = false;
+			dragging = false;
+		}else if(button == GLUT_RIGHT_BUTTON) {
+			if(connecting) {
+				Vertex *v = graph.getVertex(mouseX, mouseY, vertRadius);
+				if(v != NULL) {
+					graph.setConnected(connectVert, v, connectVert->adj.find(v) == connectVert->adj.end());
+				}
+				connecting = false;
+			}
 		}
-		dragging = false;
 	}
 }
 void mouse_move(int x, int y) {
