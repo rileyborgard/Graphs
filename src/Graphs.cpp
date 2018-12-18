@@ -4,6 +4,7 @@
 #include <cmath>
 #include <Graph.h>
 #include <set>
+#include <cstdlib>
 
 using namespace std;
 
@@ -19,6 +20,9 @@ int vertPrecision = 30;
 bool vPress = false;
 float mouseX;
 float mouseY;
+float boxMouseX;
+float boxMouseY;
+bool boxSelect = false;
 bool dragging = false;
 
 void init() {
@@ -52,7 +56,6 @@ void fillCircle(float x, float y, float r, int n) {
 
 	glEnd();
 }
-
 void drawCircle(float x, float y, float r, int n) {
 	glBegin(GL_LINE_LOOP);
 
@@ -60,6 +63,14 @@ void drawCircle(float x, float y, float r, int n) {
 		glVertex2f(x + r * cos((2 * M_PI) * i / n), y + r * sin((2 * M_PI) * i / n));
 	}
 
+	glEnd();
+}
+void drawRect(float x1, float y1, float x2, float y2) {
+	glBegin(GL_LINE_LOOP);
+	glVertex2f(x1, y1);
+	glVertex2f(x1, y2);
+	glVertex2f(x2, y2);
+	glVertex2f(x2, y1);
 	glEnd();
 }
 
@@ -93,6 +104,10 @@ void display() {
 		glColor3f(1, 1, 0);
 		drawCircle(mouseX, mouseY, vertRadius, vertPrecision);
 	}
+	if(boxSelect) {
+		glColor3f(1, 1, 0);
+		drawRect(boxMouseX, boxMouseY, mouseX, mouseY);
+	}
 
 	glFlush();
 	glutSwapBuffers();
@@ -116,6 +131,11 @@ void mouse_press(int button, int state, int x, int y) {
 				if(v != NULL) {
 					graph.select(v, true);
 					dragging = true;
+				}else {
+					// box select
+					boxMouseX = mouseX;
+					boxMouseY = mouseY;
+					boxSelect = true;
 				}
 			}
 		}else if(button == GLUT_RIGHT_BUTTON) {
@@ -125,6 +145,18 @@ void mouse_press(int button, int state, int x, int y) {
 			}
 		}
 	}else if(state == GLUT_UP) {
+		if(boxSelect) {
+			float minx = min(boxMouseX, mouseX);
+			float miny = min(boxMouseY, mouseY);
+			float maxx = max(boxMouseX, mouseX);
+			float maxy = max(boxMouseY, mouseY);
+			set<Vertex*> verts = graph.getVertices(minx, miny, maxx, maxy);
+			graph.selectAll(false);
+			for(Vertex *v : verts) {
+				graph.select(v, true);
+			}
+			boxSelect = false;
+		}
 		dragging = false;
 	}
 }

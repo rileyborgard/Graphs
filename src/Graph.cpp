@@ -28,6 +28,15 @@ Vertex * Graph::getVertex(float x, float y, float r) {
 	}
 	return NULL;
 }
+set<Vertex*> Graph::getVertices(float minx, float miny, float maxx, float maxy) {
+	set<Vertex*> result;
+	for(Vertex *v : vertices) {
+		if(v->x >= minx && v->x <= maxx && v->y >= miny && v->y <= maxy) {
+			result.insert(v);
+		}
+	}
+	return result;
+}
 
 void Graph::remove(Vertex *v) {
 	// get rid of all references to v, including from another vertex's adjacency list.
