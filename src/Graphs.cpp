@@ -166,6 +166,12 @@ void mouse_press(int button, int state, int x, int y) {
 				}
 				if(v != NULL) {
 					graph.select(v, true);
+					if(glutGetModifiers() & GLUT_ACTIVE_SHIFT) {
+						set<Vertex *> s = graph.getComponent(v);
+						for(Vertex *v2 : s) {
+							graph.select(v2, true);
+						}
+					}
 					dragging = true;
 				}else {
 					// box select

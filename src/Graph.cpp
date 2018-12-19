@@ -1,5 +1,6 @@
 
 #include "Graph.h"
+#include <queue>
 
 Graph::Graph() {
 	// TODO Auto-generated constructor stub
@@ -33,6 +34,22 @@ set<Vertex*> Graph::getVertices(float minx, float miny, float maxx, float maxy) 
 	for(Vertex *v : vertices) {
 		if(v->x >= minx && v->x <= maxx && v->y >= miny && v->y <= maxy) {
 			result.insert(v);
+		}
+	}
+	return result;
+}
+set<Vertex*> Graph::getComponent(Vertex *v) {
+	set<Vertex*> result;
+	queue<Vertex*> q;
+	q.push(v);
+	while(!q.empty()) {
+		v = q.front();
+		q.pop();
+		result.insert(v);
+		for(Vertex *v2 : v->adj) {
+			if(result.find(v2) == result.end()) {
+				q.push(v2);
+			}
 		}
 	}
 	return result;

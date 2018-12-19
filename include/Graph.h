@@ -22,6 +22,7 @@ public:
 	Vertex *insert(float x, float y);
 	Vertex *getVertex(float x, float y, float r);
 	set<Vertex*> getVertices(float minx, float miny, float maxx, float maxy);
+	set<Vertex*> getComponent(Vertex *v);
 	void remove(Vertex *v);
 	void select(Vertex *v, bool s);
 	void selectAll(bool s);
