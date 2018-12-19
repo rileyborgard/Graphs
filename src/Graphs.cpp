@@ -17,6 +17,11 @@ float vertRadius = 16;
 float vertLockRadius = 32;
 float lineWidth = 3;
 int vertPrecision = 30;
+float zoomAmt = 1.05;
+
+float translateX = 0;
+float translateY = 0;
+float zoom = 1;
 
 bool vPress = false;
 float mouseX;
@@ -26,6 +31,7 @@ float boxMouseY;
 bool boxSelect = false;
 bool dragging = false;
 bool connecting = false;
+bool translating = false;
 
 Vertex *connectVert;
 
@@ -83,6 +89,12 @@ void display() {
 
 	glMatrixMode(GL_PROJECTION);
 	glLineWidth(lineWidth);
+
+	glPushMatrix();
+	glLoadIdentity();
+	gluOrtho2D(translateX, translateX + width * zoom, translateY + height * zoom, translateY);
+	//gluOrtho2D(0, width, height, 0);
+
 	glBegin(GL_LINES);
 	glColor3f(1, 1, 1);
 	for(Vertex *v : graph.vertices) {
@@ -92,7 +104,7 @@ void display() {
 		}
 	}
 	if(connecting) {
-		Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius);
+		Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
 		if(v == NULL) {
 			glColor3f(1, 1, 0);
 			glVertex2f(connectVert->x, connectVert->y);
@@ -115,38 +127,40 @@ void display() {
 		}else {
 			glColor3f(1, 0, 0);
 		}
-		fillCircle(v->x, v->y, vertRadius, vertPrecision);
+		fillCircle(v->x, v->y, vertRadius * zoom, vertPrecision);
 		glColor3f(1, 1, 1);
-		drawCircle(v->x, v->y, vertRadius, vertPrecision);
+		drawCircle(v->x, v->y, vertRadius * zoom, vertPrecision);
 	}
 
 	if(vPress) {
 		glColor3f(1, 1, 0);
-		drawCircle(mouseX, mouseY, vertRadius, vertPrecision);
+		drawCircle(mouseX, mouseY, vertRadius * zoom, vertPrecision);
 	}
 	if(boxSelect) {
 		glColor3f(1, 1, 0);
 		drawRect(boxMouseX, boxMouseY, mouseX, mouseY);
 	}
 
+	glPopMatrix();
+
 	glFlush();
 	glutSwapBuffers();
 }
 
 void mouse_press(int button, int state, int x, int y) {
-	mouseX = x;
-	mouseY = y;
+	mouseX = x * zoom + translateX;
+	mouseY = y * zoom + translateY;
 	if(state == GLUT_DOWN) {
 		if(button == GLUT_LEFT_BUTTON) {
 			if(vPress) {
 				// create vertex
-				Vertex *v = graph.insert(x, y);
+				Vertex *v = graph.insert(mouseX, mouseY);
 				graph.selectAll(false);
 				graph.select(v, true);
 				dragging = true;
 			}else {
 				// select vertex
-				Vertex *v = graph.getVertex(x, y, vertLockRadius);
+				Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
 				if(!(glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
 					graph.selectAll(false);
 				}
@@ -161,11 +175,13 @@ void mouse_press(int button, int state, int x, int y) {
 				}
 			}
 		}else if(button == GLUT_RIGHT_BUTTON) {
-			connectVert = graph.getVertex(mouseX, mouseY, vertLockRadius);
+			connectVert = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
 			if(connectVert == NULL) {
 				connectVert = graph.insert(mouseX, mouseY);
 			}
 			connecting = true;
+		}else if(button == GLUT_MIDDLE_BUTTON) {
+			translating = true;
 		}
 	}else if(state == GLUT_UP) {
 		if(button == GLUT_LEFT_BUTTON) {
@@ -183,7 +199,7 @@ void mouse_press(int button, int state, int x, int y) {
 			dragging = false;
 		}else if(button == GLUT_RIGHT_BUTTON) {
 			if(connecting) {
-				Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius);
+				Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
 				if(v != NULL) {
 					graph.setConnected(connectVert, v, connectVert->adj.find(v) == connectVert->adj.end());
 				}else {
@@ -192,23 +208,49 @@ void mouse_press(int button, int state, int x, int y) {
 				}
 				connecting = false;
 			}
+		}else if(button == GLUT_MIDDLE_BUTTON) {
+			translating = false;
 		}
 	}
+
+	if((button == 3 || button == 4) && state == GLUT_DOWN) {
+		// mouse wheel event
+		if(button == 3) {
+			zoom /= zoomAmt;
+			translateX = mouseX + (translateX - mouseX) / zoomAmt;
+			translateY = mouseY + (translateY - mouseY) / zoomAmt;
+		}else {
+			zoom *= zoomAmt;
+			translateX = mouseX + (translateX - mouseX) * zoomAmt;
+			translateY = mouseY + (translateY - mouseY) * zoomAmt;
+		}
+		mouseX = x * zoom + translateX;
+		mouseY = y * zoom + translateY;
+	}
+	display();
 }
 void mouse_move(int x, int y) {
-	mouseX = x;
-	mouseY = y;
+	mouseX = x * zoom + translateX;
+	mouseY = y * zoom + translateY;
 	display();
 }
 void mouse_drag(int x, int y) {
+	float lastMouseX = mouseX;
+	float lastMouseY = mouseY;
+	mouseX = x * zoom + translateX;
+	mouseY = y * zoom + translateY;
 	if(dragging) {
 		for(Vertex *v : graph.selected) {
-			v->x += x - mouseX;
-			v->y += y - mouseY;
+			v->x += mouseX - lastMouseX;
+			v->y += mouseY - lastMouseY;
 		}
 	}
-	mouseX = x;
-	mouseY = y;
+	if(translating) {
+		translateX += (lastMouseX - mouseX);
+		translateY += (lastMouseY - mouseY);
+		mouseX = x * zoom + translateX;
+		mouseY = y * zoom + translateY;
+	}
 	display();
 }
 
