@@ -5,6 +5,8 @@
 #include <Graph.h>
 #include <set>
 #include <cstdlib>
+#include <string>
+#include <BitmapFontClass.h>
 
 #define MODE_SELECT 0
 #define MODE_CREATE 1
@@ -22,6 +24,7 @@ float lineWidth = 3;
 int vertPrecision = 30;
 float zoomAmt = 1.05;
 int mode = MODE_SELECT;
+string modeText[] = {"select", "create"};
 
 float translateX = 0;
 float translateY = 0;
@@ -35,6 +38,8 @@ bool boxSelect = false;
 bool dragging = false;
 bool connecting = false;
 bool translating = false;
+
+CBitmapFont font;
 
 Vertex *connectVert;
 
@@ -58,7 +63,9 @@ void init() {
 
 	//glEnable(GL_POLYGON_SMOOTH);
 	//glHint(GL_POLYGON_SMOOTH_HINT, GL_FASTEST);
-
+	if(!font.Load("font/Courier New.bff")) {
+		cerr << "Error loading font" << endl;
+	}
 }
 
 void fillCircle(float x, float y, float r, int n) {
@@ -141,6 +148,9 @@ void display() {
 	}
 
 	glPopMatrix();
+
+	font.SetColor(1, 1, 0);
+	font.ezPrint(modeText[mode].c_str(), 0, 0);
 
 	glFlush();
 	glutSwapBuffers();
