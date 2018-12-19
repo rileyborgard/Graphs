@@ -6,6 +6,9 @@
 #include <set>
 #include <cstdlib>
 
+#define MODE_SELECT 0
+#define MODE_CREATE 1
+
 using namespace std;
 
 int width = 800;
@@ -18,12 +21,12 @@ float vertLockRadius = 32;
 float lineWidth = 3;
 int vertPrecision = 30;
 float zoomAmt = 1.05;
+int mode = MODE_SELECT;
 
 float translateX = 0;
 float translateY = 0;
 float zoom = 1;
 
-bool vPress = false;
 float mouseX;
 float mouseY;
 float boxMouseX;
@@ -132,10 +135,6 @@ void display() {
 		drawCircle(v->x, v->y, vertRadius * zoom, vertPrecision);
 	}
 
-	if(vPress) {
-		glColor3f(1, 1, 0);
-		drawCircle(mouseX, mouseY, vertRadius * zoom, vertPrecision);
-	}
 	if(boxSelect) {
 		glColor3f(1, 1, 0);
 		drawRect(boxMouseX, boxMouseY, mouseX, mouseY);
@@ -150,43 +149,35 @@ void display() {
 void mouse_press(int button, int state, int x, int y) {
 	mouseX = x * zoom + translateX;
 	mouseY = y * zoom + translateY;
-	if(state == GLUT_DOWN) {
-		if(button == GLUT_LEFT_BUTTON) {
-			if(vPress) {
-				// create vertex
-				Vertex *v = graph.insert(mouseX, mouseY);
-				graph.selectAll(false);
-				graph.select(v, true);
-				dragging = true;
-			}else {
-				// select vertex
-				Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
-				if(v != NULL) {
-					bool doSelect = true;
-					if(glutGetModifiers() & GLUT_ACTIVE_ALT) {
-						doSelect = !v->selected;
-					}else if(!(glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
-						graph.selectAll(false);
-					}
-					graph.select(v, doSelect);
-					if(glutGetModifiers() & GLUT_ACTIVE_SHIFT) {
-						set<Vertex *> s = graph.getComponent(v);
-						for(Vertex *v2 : s) {
-							graph.select(v2, doSelect);
-						}
-					}
-					dragging = doSelect;
-				}else {
-					// box select
-					if(!(glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
-						graph.selectAll(false);
-					}
-					boxMouseX = mouseX;
-					boxMouseY = mouseY;
-					boxSelect = true;
+	if(state == GLUT_DOWN && button == GLUT_LEFT_BUTTON) {
+		if(mode == MODE_SELECT) {
+			// select vertex
+			Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
+			if(v != NULL) {
+				bool doSelect = true;
+				if(glutGetModifiers() & GLUT_ACTIVE_ALT) {
+					doSelect = !v->selected;
+				}else if(!(glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
+					graph.selectAll(false);
 				}
+				graph.select(v, doSelect);
+				if(glutGetModifiers() & GLUT_ACTIVE_SHIFT) {
+					set<Vertex *> s = graph.getComponent(v);
+					for(Vertex *v2 : s) {
+						graph.select(v2, doSelect);
+					}
+				}
+				dragging = doSelect;
+			}else {
+				// box select
+				if(!(glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
+					graph.selectAll(false);
+				}
+				boxMouseX = mouseX;
+				boxMouseY = mouseY;
+				boxSelect = true;
 			}
-		}else if(button == GLUT_RIGHT_BUTTON) {
+		}else if(mode == MODE_CREATE) {
 			connectVert = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
 			if(connectVert == NULL) {
 				connectVert = graph.insert(mouseX, mouseY);
@@ -195,8 +186,8 @@ void mouse_press(int button, int state, int x, int y) {
 		}else if(button == GLUT_MIDDLE_BUTTON) {
 			translating = true;
 		}
-	}else if(state == GLUT_UP) {
-		if(button == GLUT_LEFT_BUTTON) {
+	}else if(state == GLUT_UP && button == GLUT_LEFT_BUTTON) {
+		if(mode == MODE_SELECT) {
 			if(boxSelect) {
 				float minx = min(boxMouseX, mouseX);
 				float miny = min(boxMouseY, mouseY);
@@ -209,7 +200,7 @@ void mouse_press(int button, int state, int x, int y) {
 				boxSelect = false;
 			}
 			dragging = false;
-		}else if(button == GLUT_RIGHT_BUTTON) {
+		}else if(mode == MODE_CREATE) {
 			if(connecting) {
 				Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
 				if(v != NULL) {
@@ -268,7 +259,9 @@ void mouse_drag(int x, int y) {
 
 void key_press(unsigned char key, int x, int y) {
 	if(key == 'v') {
-		vPress = true;
+		mode = MODE_SELECT;
+	}else if(key == 'c') {
+		mode = MODE_CREATE;
 	}else if(key == 'd') {
 		for(Vertex *v : graph.selected) {
 			graph.remove(v);
@@ -284,10 +277,7 @@ void key_press(unsigned char key, int x, int y) {
 	display();
 }
 void key_release(unsigned char key, int x, int y) {
-	if(key == 'v') {
-		vPress = false;
-		display();
-	}
+
 }
 
 void resize(int w, int h) {
