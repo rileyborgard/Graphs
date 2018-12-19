@@ -161,20 +161,26 @@ void mouse_press(int button, int state, int x, int y) {
 			}else {
 				// select vertex
 				Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
-				if(!(glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
-					graph.selectAll(false);
-				}
 				if(v != NULL) {
-					graph.select(v, true);
+					bool doSelect = true;
+					if(glutGetModifiers() & GLUT_ACTIVE_ALT) {
+						doSelect = !v->selected;
+					}else if(!(glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
+						graph.selectAll(false);
+					}
+					graph.select(v, doSelect);
 					if(glutGetModifiers() & GLUT_ACTIVE_SHIFT) {
 						set<Vertex *> s = graph.getComponent(v);
 						for(Vertex *v2 : s) {
-							graph.select(v2, true);
+							graph.select(v2, doSelect);
 						}
 					}
-					dragging = true;
+					dragging = doSelect;
 				}else {
 					// box select
+					if(!(glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
+						graph.selectAll(false);
+					}
 					boxMouseX = mouseX;
 					boxMouseY = mouseY;
 					boxSelect = true;
