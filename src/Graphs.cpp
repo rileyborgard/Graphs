@@ -14,6 +14,7 @@ int height = 600;
 Graph graph;
 
 float vertRadius = 16;
+float vertLockRadius = 32;
 float lineWidth = 3;
 int vertPrecision = 30;
 
@@ -91,7 +92,7 @@ void display() {
 		}
 	}
 	if(connecting) {
-		Vertex *v = graph.getVertex(mouseX, mouseY, vertRadius);
+		Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius);
 		if(v == NULL) {
 			glColor3f(1, 1, 0);
 			glVertex2f(connectVert->x, connectVert->y);
@@ -145,7 +146,7 @@ void mouse_press(int button, int state, int x, int y) {
 				dragging = true;
 			}else {
 				// select vertex
-				Vertex *v = graph.getVertex(x, y, vertRadius);
+				Vertex *v = graph.getVertex(x, y, vertLockRadius);
 				if(!(glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
 					graph.selectAll(false);
 				}
@@ -160,10 +161,11 @@ void mouse_press(int button, int state, int x, int y) {
 				}
 			}
 		}else if(button == GLUT_RIGHT_BUTTON) {
-			connectVert = graph.getVertex(mouseX, mouseY, vertRadius);
-			if(connectVert != NULL) {
-				connecting = true;
+			connectVert = graph.getVertex(mouseX, mouseY, vertLockRadius);
+			if(connectVert == NULL) {
+				connectVert = graph.insert(mouseX, mouseY);
 			}
+			connecting = true;
 		}
 	}else if(state == GLUT_UP) {
 		if(button == GLUT_LEFT_BUTTON) {
@@ -181,9 +183,12 @@ void mouse_press(int button, int state, int x, int y) {
 			dragging = false;
 		}else if(button == GLUT_RIGHT_BUTTON) {
 			if(connecting) {
-				Vertex *v = graph.getVertex(mouseX, mouseY, vertRadius);
+				Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius);
 				if(v != NULL) {
 					graph.setConnected(connectVert, v, connectVert->adj.find(v) == connectVert->adj.end());
+				}else {
+					v = graph.insert(mouseX, mouseY);
+					graph.setConnected(connectVert, v, true);
 				}
 				connecting = false;
 			}

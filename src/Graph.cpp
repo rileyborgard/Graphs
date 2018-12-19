@@ -71,6 +71,9 @@ void Graph::selectAll(bool s) {
 }
 
 void Graph::setConnected(Vertex *v, Vertex *w, bool b) {
+	if(v == w) {
+		return;
+	}
 	if(b) {
 		v->adj.insert(w);
 		w->adj.insert(v);
