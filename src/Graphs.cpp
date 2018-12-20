@@ -288,6 +288,8 @@ void key_press(unsigned char key, int x, int y) {
 		while(!graph.selected.empty()) {
 			graph.remove(graph.selected[0]);
 		}
+	}else if(key == 'm') {
+		graph.mergeSelected();
 	}else if(key == 1 && (glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
 		// Ctrl + A
 		if(graph.vertices.size() == graph.selected.size()) {

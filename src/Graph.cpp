@@ -92,6 +92,30 @@ void Graph::remove(Vertex *v) {
 	delete v;
 }
 
+void Graph::mergeSelected() {
+	if(selected.empty()) {
+		return;
+	}
+	float x = 0;
+	float y = 0;
+	for(Vertex *v : selected) {
+		x += v->x;
+		y += v->y;
+	}
+	x /= selected.size();
+	y /= selected.size();
+	Vertex *u = insert(x, y);
+	for(Vertex *v : selected) {
+		for(Vertex *v2 : v->adj) {
+			setConnected(u, v2, true);
+		}
+	}
+	while(!selected.empty()) {
+		remove(selected[0]);
+	}
+	select(u, true);
+}
+
 void Graph::select(Vertex *v, bool s) {
 	v->selected = s;
 	if(s) {

@@ -26,6 +26,7 @@ public:
 	vector<Vertex*> getComponent(Vertex *v);
 	bool adjacent(Vertex *v, Vertex *w);
 	void remove(Vertex *v);
+	void mergeSelected();
 	void select(Vertex *v, bool s);
 	void selectAll(bool s);
 
