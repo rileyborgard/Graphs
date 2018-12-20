@@ -104,6 +104,7 @@ void display() {
 	glLoadIdentity();
 	gluOrtho2D(translateX, translateX + width * zoom, translateY + height * zoom, translateY);
 	//gluOrtho2D(0, width, height, 0);
+	Vertex *vMouse = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
 
 	glBegin(GL_LINES);
 	glColor3f(1, 1, 1);
@@ -116,19 +117,18 @@ void display() {
 		}
 	}
 	if(connecting) {
-		Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
-		if(v == NULL) {
+		if(vMouse == NULL) {
 			glColor3f(1, 1, 0);
 			glVertex2f(connectVert->x, connectVert->y);
 			glVertex2f(mouseX, mouseY);
 		}else {
-			if(graph.adjacent(v, connectVert)) {
+			if(graph.adjacent(vMouse, connectVert)) {
 				glColor3f(1, 0, 0);
 			}else {
 				glColor3f(0, 1, 0);
 			}
 			glVertex2f(connectVert->x, connectVert->y);
-			glVertex2f(v->x, v->y);
+			glVertex2f(vMouse->x, vMouse->y);
 		}
 	}
 	glEnd();
@@ -140,13 +140,21 @@ void display() {
 			glColor3f(1, 0, 0);
 		}
 		fillCircle(v->x, v->y, vertRadius * zoom, vertPrecision);
-		glColor3f(1, 1, 1);
+		if(v == vMouse) {
+			glColor3f(1, 1, 0);
+		}else {
+			glColor3f(1, 1, 1);
+		}
 		drawCircle(v->x, v->y, vertRadius * zoom, vertPrecision);
 	}
 
 	if(boxSelect) {
 		glColor3f(1, 1, 0);
 		drawRect(boxMouseX, boxMouseY, mouseX, mouseY);
+	}
+	if(mode == MODE_CREATE && vMouse == NULL) {
+		glColor3f(1, 1, 0);
+		drawCircle(mouseX, mouseY, vertRadius * zoom, vertPrecision);
 	}
 
 	glPopMatrix();
@@ -273,8 +281,8 @@ void key_press(unsigned char key, int x, int y) {
 	}else if(key == 'c') {
 		mode = MODE_CREATE;
 	}else if(key == 'd') {
-		for(Vertex *v : graph.selected) {
-			graph.remove(v);
+		while(!graph.selected.empty()) {
+			graph.remove(graph.selected[0]);
 		}
 	}else if(key == 1 && (glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
 		// Ctrl + A
