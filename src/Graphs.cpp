@@ -109,8 +109,10 @@ void display() {
 	glColor3f(1, 1, 1);
 	for(Vertex *v : graph.vertices) {
 		for(Vertex *w : v->adj) {
-			glVertex2f(v->x, v->y);
-			glVertex2f(w->x, w->y);
+			if(v < w) {
+				glVertex2f(v->x, v->y);
+				glVertex2f(w->x, w->y);
+			}
 		}
 	}
 	if(connecting) {
@@ -120,10 +122,10 @@ void display() {
 			glVertex2f(connectVert->x, connectVert->y);
 			glVertex2f(mouseX, mouseY);
 		}else {
-			if(v->adj.find(connectVert) == v->adj.end()) {
-				glColor3f(0, 1, 0);
-			}else {
+			if(graph.adjacent(v, connectVert)) {
 				glColor3f(1, 0, 0);
+			}else {
+				glColor3f(0, 1, 0);
 			}
 			glVertex2f(connectVert->x, connectVert->y);
 			glVertex2f(v->x, v->y);
@@ -172,7 +174,7 @@ void mouse_press(int button, int state, int x, int y) {
 				}
 				graph.select(v, doSelect);
 				if(glutGetModifiers() & GLUT_ACTIVE_SHIFT) {
-					set<Vertex *> s = graph.getComponent(v);
+					vector<Vertex *> s = graph.getComponent(v);
 					for(Vertex *v2 : s) {
 						graph.select(v2, doSelect);
 					}
@@ -193,8 +195,6 @@ void mouse_press(int button, int state, int x, int y) {
 				connectVert = graph.insert(mouseX, mouseY);
 			}
 			connecting = true;
-		}else if(button == GLUT_MIDDLE_BUTTON) {
-			translating = true;
 		}
 	}else if(state == GLUT_UP && button == GLUT_LEFT_BUTTON) {
 		if(mode == MODE_SELECT) {
@@ -203,7 +203,7 @@ void mouse_press(int button, int state, int x, int y) {
 				float miny = min(boxMouseY, mouseY);
 				float maxx = max(boxMouseX, mouseX);
 				float maxy = max(boxMouseY, mouseY);
-				set<Vertex*> verts = graph.getVertices(minx, miny, maxx, maxy);
+				vector<Vertex*> verts = graph.getVertices(minx, miny, maxx, maxy);
 				for(Vertex *v : verts) {
 					graph.select(v, true);
 				}
@@ -214,16 +214,16 @@ void mouse_press(int button, int state, int x, int y) {
 			if(connecting) {
 				Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
 				if(v != NULL) {
-					graph.setConnected(connectVert, v, connectVert->adj.find(v) == connectVert->adj.end());
+					graph.setConnected(connectVert, v, !graph.adjacent(v, connectVert));
 				}else {
 					v = graph.insert(mouseX, mouseY);
 					graph.setConnected(connectVert, v, true);
 				}
 				connecting = false;
 			}
-		}else if(button == GLUT_MIDDLE_BUTTON) {
-			translating = false;
 		}
+	}else if(button == GLUT_MIDDLE_BUTTON) {
+		translating = state == GLUT_DOWN;
 	}
 
 	if((button == 3 || button == 4) && state == GLUT_DOWN) {

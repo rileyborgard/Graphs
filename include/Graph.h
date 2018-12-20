@@ -3,7 +3,7 @@
 #define GRAPH_H_
 
 #include <cstdio>
-#include <set>
+#include <vector>
 
 using namespace std;
 
@@ -11,7 +11,8 @@ struct Vertex {
 	float x;
 	float y;
 	bool selected;
-	set<Vertex*> adj;
+	vector<Vertex*> adj;
+	unsigned int index;
 };
 
 class Graph {
@@ -21,16 +22,17 @@ public:
 
 	Vertex *insert(float x, float y);
 	Vertex *getVertex(float x, float y, float r);
-	set<Vertex*> getVertices(float minx, float miny, float maxx, float maxy);
-	set<Vertex*> getComponent(Vertex *v);
+	vector<Vertex*> getVertices(float minx, float miny, float maxx, float maxy);
+	vector<Vertex*> getComponent(Vertex *v);
+	bool adjacent(Vertex *v, Vertex *w);
 	void remove(Vertex *v);
 	void select(Vertex *v, bool s);
 	void selectAll(bool s);
 
 	void setConnected(Vertex *v, Vertex *w, bool b);
 
-	set<Vertex*> vertices;
-	set<Vertex*> selected;
+	vector<Vertex*> vertices;
+	vector<Vertex*> selected;
 };
 
 #endif
