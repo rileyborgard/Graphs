@@ -107,10 +107,14 @@ void display() {
 	Vertex *vMouse = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
 
 	glBegin(GL_LINES);
-	glColor3f(1, 1, 1);
 	for(Vertex *v : graph.vertices) {
 		for(Vertex *w : v->adj) {
 			if(v < w) {
+				if(v->selected && w->selected) {
+					glColor3f(0, 0.5, 1);
+				}else {
+					glColor3f(1, 1, 1);
+				}
 				glVertex2f(v->x, v->y);
 				glVertex2f(w->x, w->y);
 			}
@@ -135,7 +139,7 @@ void display() {
 
 	for(Vertex *v : graph.vertices) {
 		if(v->selected) {
-			glColor3f(0, 0, 1);
+			glColor3f(0, 0.5, 1);
 		}else {
 			glColor3f(1, 0, 0);
 		}
