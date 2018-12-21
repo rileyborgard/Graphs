@@ -37,13 +37,16 @@ Vertex * Graph::insert(float x, float y) {
 	return v;
 }
 Vertex * Graph::getVertex(float x, float y, float r) {
+	float mindist = r * r;
+	Vertex *minV = NULL;
 	for(Vertex *v : vertices) {
 		float dist = (v->x - x) * (v->x - x) + (v->y - y) * (v->y - y);
-		if(dist < r * r) {
-			return v;
+		if(dist <= mindist) {
+			mindist = dist;
+			minV = v;
 		}
 	}
-	return NULL;
+	return minV;
 }
 vector<Vertex*> Graph::getVertices(float minx, float miny, float maxx, float maxy) {
 	vector<Vertex*> result;

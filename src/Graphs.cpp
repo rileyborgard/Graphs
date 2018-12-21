@@ -11,6 +11,7 @@
 #define MODE_SELECT 0
 #define MODE_CREATE 1
 #define MODE_EXTEND 2
+#define MODE_EXTRUDE 3
 
 using namespace std;
 
@@ -25,7 +26,7 @@ float lineWidth = 3;
 int vertPrecision = 30;
 float zoomAmt = 1.05;
 int mode = MODE_SELECT;
-string modeText[] = {"select", "create", "extend"};
+string modeText[] = {"select", "create", "extend", "extrude"};
 
 float translateX = 0;
 float translateY = 0;
@@ -99,6 +100,54 @@ void drawRect(float x1, float y1, float x2, float y2) {
 	glEnd();
 }
 
+vector<Vertex*> copySelected(float &copyX, float &copyY) {
+	vector<Vertex*> g;
+
+	copyX = 0;
+	copyY = 0;
+	for(unsigned int i = 0; i < graph.selected.size(); i++) {
+		Vertex *v = graph.selected[i];
+		Vertex *w = new Vertex;
+		w->x = v->x;
+		w->y = v->y;
+		w->adj = vector<Vertex*>();
+		w->selected = false;
+		w->index = i;
+		g.push_back(w);
+		copyX += v->x;
+		copyY += v->y;
+	}
+	if(graph.selected.size() > 0) {
+		copyX /= graph.selected.size();
+		copyY /= graph.selected.size();
+	}
+	for(unsigned int i = 0; i < graph.selected.size(); i++) {
+		Vertex *v = graph.selected[i];
+		for(unsigned int j = i + 1; j < graph.selected.size(); j++) {
+			Vertex *w = graph.selected[j];
+			if(graph.adjacent(v, w)) {
+				g[i]->adj.push_back(g[j]);
+				g[j]->adj.push_back(g[i]);
+			}
+		}
+	}
+	return g;
+}
+vector<Vertex*> pasteSubgraph(vector<Vertex*> g, float x, float y) {
+	vector<Vertex*> vec;
+	for(unsigned int i = 0; i < g.size(); i++) {
+		vec.push_back(graph.insert(g[i]->x + x, g[i]->y + y));
+	}
+	graph.selectAll(false);
+	for(unsigned int i = 0; i < g.size(); i++) {
+		for(Vertex *v : g[i]->adj) {
+			graph.setConnected(vec[i], vec[v->index], true);
+		}
+		graph.select(vec[i], true);
+	}
+	return vec;
+}
+
 void setMode(int m) {
 	if(mode != m) {
 		mode = m;
@@ -161,6 +210,30 @@ void display() {
 				glVertex2f(w->x, w->y);
 				glVertex2f(vMouse->x, vMouse->y);
 			}
+		}
+	}else if(mode == MODE_EXTRUDE) {
+		float extrudeX = 0;
+		float extrudeY = 0;
+		vector<Vertex*> mycopy = copySelected(extrudeX, extrudeY);
+		//vector<Vertex*> selectedCopy = pasteSubgraph(mycopy, mouseX - extrudeX, mouseY - extrudeY);
+
+		glColor3f(1, 1, 0);
+		for(unsigned int i = 0; i < mycopy.size(); i++) {
+			glVertex2f(mycopy[i]->x + mouseX - extrudeX, mycopy[i]->y + mouseY - extrudeY);
+			glVertex2f(graph.selected[i]->x, graph.selected[i]->y);
+			//graph.setConnected(selectedClone[i], selectedCopy[i], true);
+			for(unsigned int j = 0; j < mycopy[i]->adj.size(); j++) {
+				glVertex2f(mycopy[i]->x + mouseX - extrudeX, mycopy[i]->y + mouseY - extrudeY);
+				glVertex2f(mycopy[i]->adj[j]->x + mouseX - extrudeX, mycopy[i]->adj[j]->y + mouseY - extrudeY);
+			}
+		}
+		glEnd();
+		for(Vertex *v : mycopy) {
+			drawCircle(v->x + mouseX - extrudeX, v->y + mouseY - extrudeY, vertRadius * zoom, vertPrecision);
+		}
+		glBegin(GL_LINES);
+		for(Vertex *v : mycopy) {
+			delete v;
 		}
 	}
 	glEnd();
@@ -245,6 +318,19 @@ void mouse_press(int button, int state, int x, int y) {
 			}
 			graph.selectAll(false);
 			graph.select(v, true);
+		}else if(mode == MODE_EXTRUDE) {
+			vector<Vertex*> selectedClone = graph.selected;
+			float extrudeX = 0;
+			float extrudeY = 0;
+			vector<Vertex*> mycopy = copySelected(extrudeX, extrudeY);
+			vector<Vertex*> selectedCopy = pasteSubgraph(mycopy, mouseX - extrudeX, mouseY - extrudeY);
+
+			for(unsigned int i = 0; i < selectedCopy.size(); i++) {
+				graph.setConnected(selectedClone[i], selectedCopy[i], true);
+			}
+			for(Vertex *v : mycopy) {
+				delete v;
+			}
 		}
 	}else if(state == GLUT_UP && button == GLUT_LEFT_BUTTON) {
 		if(mode == MODE_SELECT) {
@@ -324,6 +410,8 @@ void key_press(unsigned char key, int x, int y) {
 		setMode(MODE_CREATE);
 	}else if(key == 'e') {
 		setMode(MODE_EXTEND);
+	}else if(key == 'x') {
+		setMode(MODE_EXTRUDE);
 	}else if(key == 'd') {
 		while(!graph.selected.empty()) {
 			graph.remove(graph.selected[0]);
@@ -343,47 +431,10 @@ void key_press(unsigned char key, int x, int y) {
 			delete v;
 		}
 		graphCopy.clear();
-		copyX = 0;
-		copyY = 0;
-		for(unsigned int i = 0; i < graph.selected.size(); i++) {
-			Vertex *v = graph.selected[i];
-			Vertex *w = new Vertex;
-			w->x = v->x;
-			w->y = v->y;
-			w->adj = vector<Vertex*>();
-			w->selected = false;
-			w->index = i;
-			graphCopy.push_back(w);
-			copyX += v->x;
-			copyY += v->y;
-		}
-		if(graph.selected.size() > 0) {
-			copyX /= graph.selected.size();
-			copyY /= graph.selected.size();
-		}
-		for(unsigned int i = 0; i < graph.selected.size(); i++) {
-			Vertex *v = graph.selected[i];
-			for(unsigned int j = i + 1; j < graph.selected.size(); j++) {
-				Vertex *w = graph.selected[j];
-				if(graph.adjacent(v, w)) {
-					graphCopy[i]->adj.push_back(graphCopy[j]);
-					graphCopy[j]->adj.push_back(graphCopy[i]);
-				}
-			}
-		}
+		graphCopy = copySelected(copyX, copyY);
 	}else if(key == 22 && (glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
 		// Ctrl + V
-		vector<Vertex*> vec;
-		for(unsigned int i = 0; i < graphCopy.size(); i++) {
-			vec.push_back(graph.insert(graphCopy[i]->x - copyX + mouseX, graphCopy[i]->y - copyY + mouseY));
-		}
-		graph.selectAll(false);
-		for(unsigned int i = 0; i < graphCopy.size(); i++) {
-			for(Vertex *v : graphCopy[i]->adj) {
-				graph.setConnected(vec[i], vec[v->index], true);
-			}
-			graph.select(vec[i], true);
-		}
+		pasteSubgraph(graphCopy, mouseX - copyX, mouseY - copyY);
 	}
 	display();
 }
