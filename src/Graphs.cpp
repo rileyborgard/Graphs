@@ -10,6 +10,7 @@
 
 #define MODE_SELECT 0
 #define MODE_CREATE 1
+#define MODE_EXTEND 2
 
 using namespace std;
 
@@ -24,7 +25,7 @@ float lineWidth = 3;
 int vertPrecision = 30;
 float zoomAmt = 1.05;
 int mode = MODE_SELECT;
-string modeText[] = {"select", "create"};
+string modeText[] = {"select", "create", "extend"};
 
 float translateX = 0;
 float translateY = 0;
@@ -38,6 +39,10 @@ bool boxSelect = false;
 bool dragging = false;
 bool connecting = false;
 bool translating = false;
+
+vector<Vertex*> graphCopy;
+float copyX;
+float copyY;
 
 CBitmapFont font;
 
@@ -94,6 +99,15 @@ void drawRect(float x1, float y1, float x2, float y2) {
 	glEnd();
 }
 
+void setMode(int m) {
+	if(mode != m) {
+		mode = m;
+		connecting = false;
+		dragging = false;
+		boxSelect = false;
+	}
+}
+
 void display() {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -135,6 +149,20 @@ void display() {
 			glVertex2f(vMouse->x, vMouse->y);
 		}
 	}
+	if(mode == MODE_EXTEND) {
+		glColor3f(1, 1, 0);
+		if(vMouse == NULL) {
+			for(Vertex *w : graph.selected) {
+				glVertex2f(w->x, w->y);
+				glVertex2f(mouseX, mouseY);
+			}
+		}else {
+			for(Vertex *w : graph.selected) {
+				glVertex2f(w->x, w->y);
+				glVertex2f(vMouse->x, vMouse->y);
+			}
+		}
+	}
 	glEnd();
 
 	for(Vertex *v : graph.vertices) {
@@ -156,7 +184,7 @@ void display() {
 		glColor3f(1, 1, 0);
 		drawRect(boxMouseX, boxMouseY, mouseX, mouseY);
 	}
-	if(mode == MODE_CREATE && vMouse == NULL) {
+	if((mode == MODE_CREATE || mode == MODE_EXTEND) && vMouse == NULL) {
 		glColor3f(1, 1, 0);
 		drawCircle(mouseX, mouseY, vertRadius * zoom, vertPrecision);
 	}
@@ -207,6 +235,16 @@ void mouse_press(int button, int state, int x, int y) {
 				connectVert = graph.insert(mouseX, mouseY);
 			}
 			connecting = true;
+		}else if(mode == MODE_EXTEND) {
+			Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
+			if(v == NULL) {
+				v = graph.insert(mouseX, mouseY);
+			}
+			for(Vertex *w : graph.selected) {
+				graph.setConnected(v, w, true);
+			}
+			graph.selectAll(false);
+			graph.select(v, true);
 		}
 	}else if(state == GLUT_UP && button == GLUT_LEFT_BUTTON) {
 		if(mode == MODE_SELECT) {
@@ -281,9 +319,11 @@ void mouse_drag(int x, int y) {
 
 void key_press(unsigned char key, int x, int y) {
 	if(key == 'v') {
-		mode = MODE_SELECT;
+		setMode(MODE_SELECT);
 	}else if(key == 'c') {
-		mode = MODE_CREATE;
+		setMode(MODE_CREATE);
+	}else if(key == 'e') {
+		setMode(MODE_EXTEND);
 	}else if(key == 'd') {
 		while(!graph.selected.empty()) {
 			graph.remove(graph.selected[0]);
@@ -296,6 +336,53 @@ void key_press(unsigned char key, int x, int y) {
 			graph.selectAll(false);
 		}else {
 			graph.selectAll(true);
+		}
+	}else if(key == 3 && (glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
+		// Ctrl + C
+		for(Vertex *v : graphCopy) {
+			delete v;
+		}
+		graphCopy.clear();
+		copyX = 0;
+		copyY = 0;
+		for(unsigned int i = 0; i < graph.selected.size(); i++) {
+			Vertex *v = graph.selected[i];
+			Vertex *w = new Vertex;
+			w->x = v->x;
+			w->y = v->y;
+			w->adj = vector<Vertex*>();
+			w->selected = false;
+			w->index = i;
+			graphCopy.push_back(w);
+			copyX += v->x;
+			copyY += v->y;
+		}
+		if(graph.selected.size() > 0) {
+			copyX /= graph.selected.size();
+			copyY /= graph.selected.size();
+		}
+		for(unsigned int i = 0; i < graph.selected.size(); i++) {
+			Vertex *v = graph.selected[i];
+			for(unsigned int j = i + 1; j < graph.selected.size(); j++) {
+				Vertex *w = graph.selected[j];
+				if(graph.adjacent(v, w)) {
+					graphCopy[i]->adj.push_back(graphCopy[j]);
+					graphCopy[j]->adj.push_back(graphCopy[i]);
+				}
+			}
+		}
+	}else if(key == 22 && (glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
+		// Ctrl + V
+		vector<Vertex*> vec;
+		for(unsigned int i = 0; i < graphCopy.size(); i++) {
+			vec.push_back(graph.insert(graphCopy[i]->x - copyX + mouseX, graphCopy[i]->y - copyY + mouseY));
+		}
+		graph.selectAll(false);
+		for(unsigned int i = 0; i < graphCopy.size(); i++) {
+			for(Vertex *v : graphCopy[i]->adj) {
+				graph.setConnected(vec[i], vec[v->index], true);
+			}
+			graph.select(vec[i], true);
 		}
 	}
 	display();
