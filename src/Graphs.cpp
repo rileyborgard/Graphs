@@ -13,6 +13,10 @@
 #define MODE_EXTEND 2
 #define MODE_EXTRUDE 3
 
+#define ARROW_UNDIRECTED 0
+#define ARROW_FORWARD 1
+#define ARROW_BACKWARD 2
+
 using namespace std;
 
 int width = 800;
@@ -22,11 +26,14 @@ Graph graph;
 
 float vertRadius = 16;
 float vertLockRadius = 32;
+float arrowLength = 16;
 float lineWidth = 3;
 int vertPrecision = 30;
 float zoomAmt = 1.05;
 int mode = MODE_SELECT;
-string modeText[] = {"select", "create", "extend", "extrude"};
+int arrowMode = ARROW_UNDIRECTED;
+string modeText[] = {"MODE: select", "MODE: create", "MODE: extend", "MODE: extrude"};
+string arrowText[] = {"ARROWS: undirected", "ARROWS: forward", "ARROWS: backward"};
 
 float translateX = 0;
 float translateY = 0;
@@ -36,10 +43,13 @@ float mouseX;
 float mouseY;
 float boxMouseX;
 float boxMouseY;
+float removeMouseX;
+float removeMouseY;
 bool boxSelect = false;
 bool dragging = false;
 bool connecting = false;
 bool translating = false;
+bool removing = false;
 
 vector<Vertex*> graphCopy;
 float copyX;
@@ -99,6 +109,42 @@ void drawRect(float x1, float y1, float x2, float y2) {
 	glVertex2f(x2, y1);
 	glEnd();
 }
+void drawArrow(float x1, float y1, float x2, float y2, int type) {
+	if(type == ARROW_BACKWARD) {
+		swap(x1, x2);
+		swap(y1, y2);
+	}
+	float ang = atan2(y2 - y1, x2 - x1);
+	glVertex2f(x1 + vertRadius * zoom * cos(ang), y1 + vertRadius * zoom * sin(ang));
+	glVertex2f(x2 - vertRadius * zoom * cos(ang), y2 - vertRadius * zoom * sin(ang));
+
+	if(type != ARROW_UNDIRECTED && (x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1) > zoom * zoom * vertRadius * vertRadius) {
+		x1 = x2 - vertRadius * zoom * cos(ang);
+		y1 = y2 - vertRadius * zoom * sin(ang);
+
+		glVertex2f(x1, y1);
+		glVertex2f(x1 + arrowLength * zoom * cos(ang + 7 * M_PI / 8),
+				y1 + arrowLength * zoom * sin(ang + 7 * M_PI / 8));
+
+		glVertex2f(x1, y1);
+		glVertex2f(x1 + arrowLength * zoom * cos(ang - 7 * M_PI / 8),
+				y1 + arrowLength * zoom * sin(ang - 7 * M_PI / 8));
+	}
+}
+
+int orientation(float px, float py, float qx, float qy, float rx, float ry) {
+	float val = (qy - py) * (rx - qx) - (qx - px) * (ry - qy);
+	if(val == 0) return 0;
+	return val > 0 ? 1 : 2;
+}
+bool intersecting(float x1, float y1, float x2, float y2,
+				float X1, float Y1, float X2, float Y2) {
+	int o1 = orientation(x1, y1, x2, y2, X1, Y1);
+	int o2 = orientation(x1, y1, x2, y2, X2, Y2);
+	int o3 = orientation(X1, Y1, X2, Y2, x1, y1);
+	int o4 = orientation(X1, Y1, X2, Y2, x2, y2);
+	return o1 != o2 && o3 != o4;
+}
 
 vector<Vertex*> copySelected(float &copyX, float &copyY) {
 	vector<Vertex*> g;
@@ -110,7 +156,8 @@ vector<Vertex*> copySelected(float &copyX, float &copyY) {
 		Vertex *w = new Vertex;
 		w->x = v->x;
 		w->y = v->y;
-		w->adj = vector<Vertex*>();
+		w->adjout = vector<Vertex*>();
+		w->adjin = vector<Vertex*>();
 		w->selected = false;
 		w->index = i;
 		g.push_back(w);
@@ -126,8 +173,12 @@ vector<Vertex*> copySelected(float &copyX, float &copyY) {
 		for(unsigned int j = i + 1; j < graph.selected.size(); j++) {
 			Vertex *w = graph.selected[j];
 			if(graph.adjacent(v, w)) {
-				g[i]->adj.push_back(g[j]);
-				g[j]->adj.push_back(g[i]);
+				g[i]->adjout.push_back(g[j]);
+				g[j]->adjin.push_back(g[i]);
+			}
+			if(graph.adjacent(w, v)) {
+				g[j]->adjout.push_back(g[i]);
+				g[i]->adjin.push_back(g[j]);
 			}
 		}
 	}
@@ -140,8 +191,8 @@ vector<Vertex*> pasteSubgraph(vector<Vertex*> g, float x, float y) {
 	}
 	graph.selectAll(false);
 	for(unsigned int i = 0; i < g.size(); i++) {
-		for(Vertex *v : g[i]->adj) {
-			graph.setConnected(vec[i], vec[v->index], true);
+		for(Vertex *v : g[i]->adjout) {
+			graph.addArrow(vec[i], vec[v->index]);
 		}
 		graph.select(vec[i], true);
 	}
@@ -154,6 +205,12 @@ void setMode(int m) {
 		connecting = false;
 		dragging = false;
 		boxSelect = false;
+		removing = false;
+	}
+}
+void setArrowMode(int m) {
+	if(arrowMode != m) {
+		arrowMode = m;
 	}
 }
 
@@ -171,44 +228,42 @@ void display() {
 
 	glBegin(GL_LINES);
 	for(Vertex *v : graph.vertices) {
-		for(Vertex *w : v->adj) {
-			if(v < w) {
-				if(v->selected && w->selected) {
-					glColor3f(0, 0.5, 1);
-				}else {
-					glColor3f(1, 1, 1);
-				}
-				glVertex2f(v->x, v->y);
-				glVertex2f(w->x, w->y);
+		for(Vertex *w : v->adjout) {
+			if(removing && intersecting(v->x, v->y, w->x, w->y, removeMouseX, removeMouseY, mouseX, mouseY)) {
+				glColor3f(1, 0, 0);
+			}else if(v->selected && w->selected) {
+				glColor3f(0, 0.5, 1);
+			}else {
+				glColor3f(1, 1, 1);
 			}
+			drawArrow(v->x, v->y, w->x, w->y, graph.adjacent(w, v) ? ARROW_UNDIRECTED : ARROW_FORWARD);
 		}
 	}
 	if(connecting) {
 		if(vMouse == NULL) {
 			glColor3f(1, 1, 0);
-			glVertex2f(connectVert->x, connectVert->y);
-			glVertex2f(mouseX, mouseY);
-		}else {
-			if(graph.adjacent(vMouse, connectVert)) {
-				glColor3f(1, 0, 0);
-			}else {
-				glColor3f(0, 1, 0);
-			}
-			glVertex2f(connectVert->x, connectVert->y);
-			glVertex2f(vMouse->x, vMouse->y);
+			drawArrow(connectVert->x, connectVert->y, mouseX, mouseY, arrowMode);
+		}else if(connectVert != vMouse) {
+			glColor3f(0, 1, 0);
+			drawArrow(connectVert->x, connectVert->y, vMouse->x, vMouse->y, arrowMode);
 		}
+	}
+	if(removing) {
+		glColor3f(1, 0, 0);
+		glVertex2f(removeMouseX, removeMouseY);
+		glVertex2f(mouseX, mouseY);
 	}
 	if(mode == MODE_EXTEND) {
 		glColor3f(1, 1, 0);
 		if(vMouse == NULL) {
 			for(Vertex *w : graph.selected) {
-				glVertex2f(w->x, w->y);
-				glVertex2f(mouseX, mouseY);
+				drawArrow(w->x, w->y, mouseX, mouseY, arrowMode);
 			}
 		}else {
 			for(Vertex *w : graph.selected) {
-				glVertex2f(w->x, w->y);
-				glVertex2f(vMouse->x, vMouse->y);
+				if(w != vMouse) {
+					drawArrow(w->x, w->y, vMouse->x, vMouse->y, arrowMode);
+				}
 			}
 		}
 	}else if(mode == MODE_EXTRUDE) {
@@ -219,12 +274,13 @@ void display() {
 
 		glColor3f(1, 1, 0);
 		for(unsigned int i = 0; i < mycopy.size(); i++) {
-			glVertex2f(mycopy[i]->x + mouseX - extrudeX, mycopy[i]->y + mouseY - extrudeY);
-			glVertex2f(graph.selected[i]->x, graph.selected[i]->y);
+			drawArrow(graph.selected[i]->x, graph.selected[i]->y,
+					mycopy[i]->x + mouseX - extrudeX, mycopy[i]->y + mouseY - extrudeY, arrowMode);
 			//graph.setConnected(selectedClone[i], selectedCopy[i], true);
-			for(unsigned int j = 0; j < mycopy[i]->adj.size(); j++) {
-				glVertex2f(mycopy[i]->x + mouseX - extrudeX, mycopy[i]->y + mouseY - extrudeY);
-				glVertex2f(mycopy[i]->adj[j]->x + mouseX - extrudeX, mycopy[i]->adj[j]->y + mouseY - extrudeY);
+			for(unsigned int j = 0; j < mycopy[i]->adjout.size(); j++) {
+				drawArrow(mycopy[i]->x + mouseX - extrudeX, mycopy[i]->y + mouseY - extrudeY,
+						mycopy[i]->adjout[j]->x + mouseX - extrudeX, mycopy[i]->adjout[j]->y + mouseY - extrudeY,
+						graph.arrowType(mycopy[i], mycopy[i]->adjout[j]));
 			}
 		}
 		glEnd();
@@ -257,15 +313,17 @@ void display() {
 		glColor3f(1, 1, 0);
 		drawRect(boxMouseX, boxMouseY, mouseX, mouseY);
 	}
-	if((mode == MODE_CREATE || mode == MODE_EXTEND) && vMouse == NULL) {
+	if((mode == MODE_CREATE || mode == MODE_EXTEND) && vMouse == NULL && !removing) {
 		glColor3f(1, 1, 0);
 		drawCircle(mouseX, mouseY, vertRadius * zoom, vertPrecision);
 	}
 
 	glPopMatrix();
 
-	font.SetColor(1, 1, 0);
+	font.SetColor(0, 0.75, 0.75);
 	font.ezPrint(modeText[mode].c_str(), 0, 0);
+	font.SetColor(0, 1, 0);
+	font.ezPrint(arrowText[arrowMode].c_str(), 0, 30);
 
 	glFlush();
 	glutSwapBuffers();
@@ -308,13 +366,14 @@ void mouse_press(int button, int state, int x, int y) {
 				connectVert = graph.insert(mouseX, mouseY);
 			}
 			connecting = true;
+			removing = false;
 		}else if(mode == MODE_EXTEND) {
 			Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
 			if(v == NULL) {
 				v = graph.insert(mouseX, mouseY);
 			}
 			for(Vertex *w : graph.selected) {
-				graph.setConnected(v, w, true);
+				graph.setConnected(w, v, arrowMode);
 			}
 			graph.selectAll(false);
 			graph.select(v, true);
@@ -326,7 +385,7 @@ void mouse_press(int button, int state, int x, int y) {
 			vector<Vertex*> selectedCopy = pasteSubgraph(mycopy, mouseX - extrudeX, mouseY - extrudeY);
 
 			for(unsigned int i = 0; i < selectedCopy.size(); i++) {
-				graph.setConnected(selectedClone[i], selectedCopy[i], true);
+				graph.setConnected(selectedClone[i], selectedCopy[i], arrowMode);
 			}
 			for(Vertex *v : mycopy) {
 				delete v;
@@ -349,17 +408,33 @@ void mouse_press(int button, int state, int x, int y) {
 		}else if(mode == MODE_CREATE) {
 			if(connecting) {
 				Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
-				if(v != NULL) {
-					graph.setConnected(connectVert, v, !graph.adjacent(v, connectVert));
-				}else {
+				if(v == NULL) {
 					v = graph.insert(mouseX, mouseY);
-					graph.setConnected(connectVert, v, true);
 				}
+				graph.setConnected(connectVert, v, arrowMode);
 				connecting = false;
 			}
 		}
 	}else if(button == GLUT_MIDDLE_BUTTON) {
 		translating = state == GLUT_DOWN;
+	}else if(button == GLUT_RIGHT_BUTTON && state == GLUT_DOWN) {
+		if(mode == MODE_CREATE) {
+			removeMouseX = mouseX;
+			removeMouseY = mouseY;
+			removing = true;
+			connecting = false;
+		}
+	}else if(button == GLUT_RIGHT_BUTTON && state == GLUT_UP) {
+		if(mode == MODE_CREATE && removing) {
+			for(Vertex *v : graph.vertices) {
+				for(Vertex *w : v->adjout) {
+					if(intersecting(v->x, v->y, w->x, w->y, removeMouseX, removeMouseY, mouseX, mouseY)) {
+						graph.setDisconnected(v, w);
+					}
+				}
+			}
+			removing = false;
+		}
 	}
 
 	if((button == 3 || button == 4) && state == GLUT_DOWN) {
@@ -412,6 +487,12 @@ void key_press(unsigned char key, int x, int y) {
 		setMode(MODE_EXTEND);
 	}else if(key == 'x') {
 		setMode(MODE_EXTRUDE);
+	}else if(key == 'u') {
+		setArrowMode(ARROW_UNDIRECTED);
+	}else if(key == 'f') {
+		setArrowMode(ARROW_FORWARD);
+	}else if(key == 'b') {
+		setArrowMode(ARROW_BACKWARD);
 	}else if(key == 'd') {
 		while(!graph.selected.empty()) {
 			graph.remove(graph.selected[0]);

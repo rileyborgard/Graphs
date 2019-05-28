@@ -31,7 +31,8 @@ Vertex * Graph::insert(float x, float y) {
 	v->x = x;
 	v->y = y;
 	v->selected = false;
-	v->adj = vector<Vertex*>();
+	v->adjin = vector<Vertex*>();
+	v->adjout = vector<Vertex*>();
 	v->index = vertices.size();
 	vertices.push_back(v);
 	return v;
@@ -66,7 +67,13 @@ vector<Vertex*> Graph::getComponent(Vertex *v) {
 		v = q.front();
 		q.pop();
 		result.push_back(v);
-		for(Vertex *v2 : v->adj) {
+		for(Vertex *v2 : v->adjout) {
+			if(!visited[v2->index]) {
+				visited[v2->index] = true;
+				q.push(v2);
+			}
+		}
+		for(Vertex *v2 : v->adjin) {
 			if(!visited[v2->index]) {
 				visited[v2->index] = true;
 				q.push(v2);
@@ -77,13 +84,22 @@ vector<Vertex*> Graph::getComponent(Vertex *v) {
 }
 
 bool Graph::adjacent(Vertex *v, Vertex *w) {
-	return find(v->adj.begin(), v->adj.end(), w) != v->adj.end();
+	return find(v->adjout.begin(), v->adjout.end(), w) != v->adjout.end();
+}
+int Graph::arrowType(Vertex *v, Vertex *w) {
+	bool b1 = adjacent(v, w);
+	bool b2 = adjacent(w, v);
+	if(b1 && b2) return 0;
+	else if(b1) return 1;
+	else if(b2) return 2;
+	return -1;
 }
 
 void Graph::remove(Vertex *v) {
 	// get rid of all references to v, including from another vertex's adjacency list.
 	for(Vertex *v2 : vertices) {
-		removeFromList(v2->adj, v);
+		removeFromList(v2->adjout, v);
+		removeFromList(v2->adjin, v);
 	}
 	removeFromList(vertices, v);
 	removeFromList(selected, v);
@@ -109,8 +125,13 @@ void Graph::mergeSelected() {
 	y /= selected.size();
 	Vertex *u = insert(x, y);
 	for(Vertex *v : selected) {
-		for(Vertex *v2 : v->adj) {
-			setConnected(u, v2, true);
+		for(Vertex *v2 : v->adjout) {
+			addToList(u->adjout, v2);
+			addToList(v2->adjin, u);
+		}
+		for(Vertex *v2 : v->adjin) {
+			addToList(v2->adjout, u);
+			addToList(u->adjin, v2);
 		}
 	}
 	while(!selected.empty()) {
@@ -142,15 +163,46 @@ void Graph::selectAll(bool s) {
 	}
 }
 
-void Graph::setConnected(Vertex *v, Vertex *w, bool b) {
+void Graph::setDisconnected(Vertex *v, Vertex *w) {
 	if(v == w) {
 		return;
 	}
-	if(b) {
-		addToList(v->adj, w);
-		addToList(w->adj, v);
-	}else {
-		removeFromList(v->adj, w);
-		removeFromList(w->adj, v);
+	removeFromList(v->adjout, w);
+	removeFromList(v->adjin, w);
+	removeFromList(w->adjout, v);
+	removeFromList(w->adjin, v);
+}
+void Graph::setConnected(Vertex *v, Vertex *w) {
+	if(v == w) {
+		return;
 	}
+	addToList(v->adjout, w);
+	addToList(w->adjout, v);
+	addToList(v->adjin, w);
+	addToList(w->adjin, v);
+}
+void Graph::setConnected(Vertex *v, Vertex *w, int mode) {
+	if(mode == 0) {
+		setConnected(v, w);
+	}else if(mode == 1) {
+		setArrow(v, w);
+	}else if(mode == 2) {
+		setArrow(w, v);
+	}
+}
+void Graph::setArrow(Vertex *v, Vertex *w) {
+	if(v == w) {
+		return;
+	}
+	addToList(v->adjout, w);
+	addToList(w->adjin, v);
+	removeFromList(w->adjout, v);
+	removeFromList(v->adjin, w);
+}
+void Graph::addArrow(Vertex *v, Vertex *w) {
+	if(v == w) {
+		return;
+	}
+	addToList(v->adjout, w);
+	addToList(w->adjin, v);
 }
