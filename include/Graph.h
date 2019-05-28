@@ -10,6 +10,7 @@ using namespace std;
 struct Vertex {
 	float x;
 	float y;
+	int color;
 	bool selected;
 	vector<Vertex*> adjout;
 	vector<Vertex*> adjin;
@@ -21,7 +22,7 @@ public:
 	Graph();
 	virtual ~Graph();
 
-	Vertex *insert(float x, float y);
+	Vertex *insert(float x, float y, int color = 0);
 	Vertex *getVertex(float x, float y, float r);
 	vector<Vertex*> getVertices(float minx, float miny, float maxx, float maxy);
 	vector<Vertex*> getComponent(Vertex *v);

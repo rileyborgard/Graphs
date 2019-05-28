@@ -27,13 +27,23 @@ Graph graph;
 float vertRadius = 16;
 float vertLockRadius = 32;
 float arrowLength = 16;
-float lineWidth = 3;
+float lineWidth = 4;
 int vertPrecision = 30;
 float zoomAmt = 1.05;
 int mode = MODE_SELECT;
 int arrowMode = ARROW_UNDIRECTED;
 string modeText[] = {"MODE: select", "MODE: create", "MODE: extend", "MODE: extrude"};
 string arrowText[] = {"ARROWS: undirected", "ARROWS: forward", "ARROWS: backward"};
+
+float col[10][3] = {{1, 1, 1}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {1, 1, 0}, {0, 1, 1},
+		{1, 0, 1}, {1, 0.5f, 0}, {0.5f, 0.5f, 0.5f}, {0.5, 0.25, 0}};
+float highlightCol[3] = {0, 0.75, 0};
+float selectCol[3] = {0, 0.5, 1};
+float outlineCol[3] = {0, 0, 0};
+float backgroundCol[3] = {1, 1, 1};
+float removeCol[3] = {1, 0, 0};
+float createCol[3] = {0, 0.75, 0};
+float textCol[3] = {0, 0, 0};
 
 float translateX = 0;
 float translateY = 0;
@@ -60,7 +70,7 @@ CBitmapFont font;
 Vertex *connectVert;
 
 void init() {
-	glClearColor(0.0f, 0.0f, 0.0f, 1.f);
+	glClearColor(backgroundCol[0], backgroundCol[1], backgroundCol[2], 1.f);
 	glPointSize(4.0f);
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -156,6 +166,7 @@ vector<Vertex*> copySelected(float &copyX, float &copyY) {
 		Vertex *w = new Vertex;
 		w->x = v->x;
 		w->y = v->y;
+		w->color = v->color;
 		w->adjout = vector<Vertex*>();
 		w->adjin = vector<Vertex*>();
 		w->selected = false;
@@ -187,7 +198,7 @@ vector<Vertex*> copySelected(float &copyX, float &copyY) {
 vector<Vertex*> pasteSubgraph(vector<Vertex*> g, float x, float y) {
 	vector<Vertex*> vec;
 	for(unsigned int i = 0; i < g.size(); i++) {
-		vec.push_back(graph.insert(g[i]->x + x, g[i]->y + y));
+		vec.push_back(graph.insert(g[i]->x + x, g[i]->y + y, g[i]->color));
 	}
 	graph.selectAll(false);
 	for(unsigned int i = 0; i < g.size(); i++) {
@@ -230,31 +241,31 @@ void display() {
 	for(Vertex *v : graph.vertices) {
 		for(Vertex *w : v->adjout) {
 			if(removing && intersecting(v->x, v->y, w->x, w->y, removeMouseX, removeMouseY, mouseX, mouseY)) {
-				glColor3f(1, 0, 0);
+				glColor3f(removeCol[0], removeCol[1], removeCol[2]);
 			}else if(v->selected && w->selected) {
-				glColor3f(0, 0.5, 1);
+				glColor3f(selectCol[0], selectCol[1], selectCol[2]);
 			}else {
-				glColor3f(1, 1, 1);
+				glColor3f(outlineCol[0], outlineCol[1], outlineCol[2]);
 			}
 			drawArrow(v->x, v->y, w->x, w->y, graph.adjacent(w, v) ? ARROW_UNDIRECTED : ARROW_FORWARD);
 		}
 	}
 	if(connecting) {
 		if(vMouse == NULL) {
-			glColor3f(1, 1, 0);
+			glColor3f(highlightCol[0], highlightCol[1], highlightCol[2]);
 			drawArrow(connectVert->x, connectVert->y, mouseX, mouseY, arrowMode);
 		}else if(connectVert != vMouse) {
-			glColor3f(0, 1, 0);
+			glColor3f(createCol[0], createCol[1], createCol[2]);
 			drawArrow(connectVert->x, connectVert->y, vMouse->x, vMouse->y, arrowMode);
 		}
 	}
 	if(removing) {
-		glColor3f(1, 0, 0);
+		glColor3f(removeCol[0], removeCol[1], removeCol[2]);
 		glVertex2f(removeMouseX, removeMouseY);
 		glVertex2f(mouseX, mouseY);
 	}
 	if(mode == MODE_EXTEND) {
-		glColor3f(1, 1, 0);
+		glColor3f(highlightCol[0], highlightCol[1], highlightCol[2]);
 		if(vMouse == NULL) {
 			for(Vertex *w : graph.selected) {
 				drawArrow(w->x, w->y, mouseX, mouseY, arrowMode);
@@ -272,7 +283,7 @@ void display() {
 		vector<Vertex*> mycopy = copySelected(extrudeX, extrudeY);
 		//vector<Vertex*> selectedCopy = pasteSubgraph(mycopy, mouseX - extrudeX, mouseY - extrudeY);
 
-		glColor3f(1, 1, 0);
+		glColor3f(highlightCol[0], highlightCol[1], highlightCol[2]);
 		for(unsigned int i = 0; i < mycopy.size(); i++) {
 			drawArrow(graph.selected[i]->x, graph.selected[i]->y,
 					mycopy[i]->x + mouseX - extrudeX, mycopy[i]->y + mouseY - extrudeY, arrowMode);
@@ -295,34 +306,32 @@ void display() {
 	glEnd();
 
 	for(Vertex *v : graph.vertices) {
-		if(v->selected) {
-			glColor3f(0, 0.5, 1);
-		}else {
-			glColor3f(1, 0, 0);
-		}
+		glColor3f(col[v->color][0], col[v->color][1], col[v->color][2]);
 		fillCircle(v->x, v->y, vertRadius * zoom, vertPrecision);
-		if(v == vMouse) {
-			glColor3f(1, 1, 0);
+		if(v->selected) {
+			glColor3f(selectCol[0], selectCol[1], selectCol[2]);
+		}else if(v == vMouse) {
+			glColor3f(highlightCol[0], highlightCol[1], highlightCol[2]);
 		}else {
-			glColor3f(1, 1, 1);
+			glColor3f(outlineCol[0], outlineCol[1], outlineCol[2]);
 		}
 		drawCircle(v->x, v->y, vertRadius * zoom, vertPrecision);
 	}
 
 	if(boxSelect) {
-		glColor3f(1, 1, 0);
+		glColor3f(highlightCol[0], highlightCol[1], highlightCol[2]);
 		drawRect(boxMouseX, boxMouseY, mouseX, mouseY);
 	}
 	if((mode == MODE_CREATE || mode == MODE_EXTEND) && vMouse == NULL && !removing) {
-		glColor3f(1, 1, 0);
+		glColor3f(highlightCol[0], highlightCol[1], highlightCol[2]);
 		drawCircle(mouseX, mouseY, vertRadius * zoom, vertPrecision);
 	}
 
 	glPopMatrix();
 
-	font.SetColor(0, 0.75, 0.75);
+	font.SetColor(textCol[0], textCol[1], textCol[2]);
 	font.ezPrint(modeText[mode].c_str(), 0, 0);
-	font.SetColor(0, 1, 0);
+	font.SetColor(textCol[0], textCol[1], textCol[2]);
 	font.ezPrint(arrowText[arrowMode].c_str(), 0, 30);
 
 	glFlush();
@@ -493,6 +502,10 @@ void key_press(unsigned char key, int x, int y) {
 		setArrowMode(ARROW_FORWARD);
 	}else if(key == 'b') {
 		setArrowMode(ARROW_BACKWARD);
+	}else if(key >= '0' && key <= '9') {
+		for(Vertex *v : graph.selected) {
+			v->color = (key - '0');
+		}
 	}else if(key == 'd') {
 		while(!graph.selected.empty()) {
 			graph.remove(graph.selected[0]);

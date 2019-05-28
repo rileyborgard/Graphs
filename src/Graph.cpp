@@ -26,11 +26,12 @@ void addToList(vector<Vertex*> &list, Vertex *v) {
 	}
 }
 
-Vertex * Graph::insert(float x, float y) {
+Vertex * Graph::insert(float x, float y, int color) {
 	Vertex *v = new Vertex;
 	v->x = x;
 	v->y = y;
 	v->selected = false;
+	v->color = color;
 	v->adjin = vector<Vertex*>();
 	v->adjout = vector<Vertex*>();
 	v->index = vertices.size();
