@@ -48,6 +48,7 @@ float textCol[3] = {0, 0, 0};
 float translateX = 0;
 float translateY = 0;
 float zoom = 1;
+float gridSpace = 32;
 
 float mouseX;
 float mouseY;
@@ -60,6 +61,7 @@ bool dragging = false;
 bool connecting = false;
 bool translating = false;
 bool removing = false;
+bool showGrid = false;
 
 vector<Vertex*> graphCopy;
 float copyX;
@@ -156,6 +158,39 @@ bool intersecting(float x1, float y1, float x2, float y2,
 	return o1 != o2 && o3 != o4;
 }
 
+float snapX(float x, float tx, float sz) {
+	x = (x - translateX) / zoom;
+	int i = round((x + tx) / sz);
+	return (-tx + i * sz) * zoom + translateX;
+}
+float snapY(float y, float ty, float sz) {
+	y = (y - translateY) / zoom;
+	int i = round((y + ty) / sz);
+	return (-ty + i * sz) * zoom + translateY;
+}
+float snapX(float x) {
+	float sz = gridSpace / zoom;
+	while(sz < gridSpace) {
+		sz *= 2;
+	}
+	while(sz > 2 * gridSpace) {
+		sz /= 2;
+	}
+	float tx = translateX / zoom - sz * floor(translateX / sz);
+	return snapX(x, tx, sz);
+}
+float snapY(float y) {
+	float sz = gridSpace / zoom;
+	while(sz < gridSpace) {
+		sz *= 2;
+	}
+	while(sz > 2 * gridSpace) {
+		sz /= 2;
+	}
+	float ty = translateY / zoom - sz * floor(translateY / sz);
+	return snapY(y, ty, sz);
+}
+
 vector<Vertex*> copySelected(float &copyX, float &copyY) {
 	vector<Vertex*> g;
 
@@ -231,6 +266,33 @@ void display() {
 	glMatrixMode(GL_PROJECTION);
 	glLineWidth(lineWidth);
 
+	float mx = mouseX;
+	float my = mouseY;
+	if(showGrid) {
+		glBegin(GL_LINES);
+		glColor3f(0.75, 0.75, 0.75);
+		float sz = gridSpace / zoom;
+		while(sz < gridSpace) {
+			sz *= 2;
+		}
+		while(sz > 2 * gridSpace) {
+			sz /= 2;
+		}
+		float tx = translateX / zoom - sz * floor(translateX / sz);
+		float ty = translateY / zoom - sz * floor(translateY / sz);
+		mx = snapX(mouseX, tx, sz);
+		my = snapY(mouseY, ty, sz);
+		for(int i = -1 + tx / sz; -tx + (i - 1) * sz < width; i++) {
+			glVertex2f(-tx + i * sz, 0);
+			glVertex2f(-tx + i * sz, height);
+		}
+		for(int i = -1 + ty / sz; -ty + (i - 1) * sz < height; i++) {
+			glVertex2f(0, -ty + i * sz);
+			glVertex2f(width, -ty + i * sz);
+		}
+		glEnd();
+	}
+
 	glPushMatrix();
 	glLoadIdentity();
 	gluOrtho2D(translateX, translateX + width * zoom, translateY + height * zoom, translateY);
@@ -253,7 +315,7 @@ void display() {
 	if(connecting) {
 		if(vMouse == NULL) {
 			glColor3f(highlightCol[0], highlightCol[1], highlightCol[2]);
-			drawArrow(connectVert->x, connectVert->y, mouseX, mouseY, arrowMode);
+			drawArrow(connectVert->x, connectVert->y, mx, my, arrowMode);
 		}else if(connectVert != vMouse) {
 			glColor3f(createCol[0], createCol[1], createCol[2]);
 			drawArrow(connectVert->x, connectVert->y, vMouse->x, vMouse->y, arrowMode);
@@ -268,7 +330,7 @@ void display() {
 		glColor3f(highlightCol[0], highlightCol[1], highlightCol[2]);
 		if(vMouse == NULL) {
 			for(Vertex *w : graph.selected) {
-				drawArrow(w->x, w->y, mouseX, mouseY, arrowMode);
+				drawArrow(w->x, w->y, mx, my, arrowMode);
 			}
 		}else {
 			for(Vertex *w : graph.selected) {
@@ -286,17 +348,17 @@ void display() {
 		glColor3f(highlightCol[0], highlightCol[1], highlightCol[2]);
 		for(unsigned int i = 0; i < mycopy.size(); i++) {
 			drawArrow(graph.selected[i]->x, graph.selected[i]->y,
-					mycopy[i]->x + mouseX - extrudeX, mycopy[i]->y + mouseY - extrudeY, arrowMode);
+					mycopy[i]->x + mx - extrudeX, mycopy[i]->y + my - extrudeY, arrowMode);
 			//graph.setConnected(selectedClone[i], selectedCopy[i], true);
 			for(unsigned int j = 0; j < mycopy[i]->adjout.size(); j++) {
-				drawArrow(mycopy[i]->x + mouseX - extrudeX, mycopy[i]->y + mouseY - extrudeY,
-						mycopy[i]->adjout[j]->x + mouseX - extrudeX, mycopy[i]->adjout[j]->y + mouseY - extrudeY,
+				drawArrow(mycopy[i]->x + mx - extrudeX, mycopy[i]->y + my - extrudeY,
+						mycopy[i]->adjout[j]->x + mx - extrudeX, mycopy[i]->adjout[j]->y + my - extrudeY,
 						graph.arrowType(mycopy[i], mycopy[i]->adjout[j]));
 			}
 		}
 		glEnd();
 		for(Vertex *v : mycopy) {
-			drawCircle(v->x + mouseX - extrudeX, v->y + mouseY - extrudeY, vertRadius * zoom, vertPrecision);
+			drawCircle(v->x + mx - extrudeX, v->y + my - extrudeY, vertRadius * zoom, vertPrecision);
 		}
 		glBegin(GL_LINES);
 		for(Vertex *v : mycopy) {
@@ -324,7 +386,7 @@ void display() {
 	}
 	if((mode == MODE_CREATE || mode == MODE_EXTEND) && vMouse == NULL && !removing) {
 		glColor3f(highlightCol[0], highlightCol[1], highlightCol[2]);
-		drawCircle(mouseX, mouseY, vertRadius * zoom, vertPrecision);
+		drawCircle(mx, my, vertRadius * zoom, vertPrecision);
 	}
 
 	glPopMatrix();
@@ -341,6 +403,12 @@ void display() {
 void mouse_press(int button, int state, int x, int y) {
 	mouseX = x * zoom + translateX;
 	mouseY = y * zoom + translateY;
+	float mx = mouseX;
+	float my = mouseY;
+	if(showGrid) {
+		mx = snapX(mouseX);
+		my = snapY(mouseY);
+	}
 	if(state == GLUT_DOWN && button == GLUT_LEFT_BUTTON) {
 		if(mode == MODE_SELECT) {
 			// select vertex
@@ -372,14 +440,14 @@ void mouse_press(int button, int state, int x, int y) {
 		}else if(mode == MODE_CREATE) {
 			connectVert = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
 			if(connectVert == NULL) {
-				connectVert = graph.insert(mouseX, mouseY);
+				connectVert = graph.insert(mx, my);
 			}
 			connecting = true;
 			removing = false;
 		}else if(mode == MODE_EXTEND) {
 			Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
 			if(v == NULL) {
-				v = graph.insert(mouseX, mouseY);
+				v = graph.insert(mx, my);
 			}
 			for(Vertex *w : graph.selected) {
 				graph.setConnected(w, v, arrowMode);
@@ -391,7 +459,7 @@ void mouse_press(int button, int state, int x, int y) {
 			float extrudeX = 0;
 			float extrudeY = 0;
 			vector<Vertex*> mycopy = copySelected(extrudeX, extrudeY);
-			vector<Vertex*> selectedCopy = pasteSubgraph(mycopy, mouseX - extrudeX, mouseY - extrudeY);
+			vector<Vertex*> selectedCopy = pasteSubgraph(mycopy, mx - extrudeX, my - extrudeY);
 
 			for(unsigned int i = 0; i < selectedCopy.size(); i++) {
 				graph.setConnected(selectedClone[i], selectedCopy[i], arrowMode);
@@ -418,7 +486,7 @@ void mouse_press(int button, int state, int x, int y) {
 			if(connecting) {
 				Vertex *v = graph.getVertex(mouseX, mouseY, vertLockRadius * zoom);
 				if(v == NULL) {
-					v = graph.insert(mouseX, mouseY);
+					v = graph.insert(mx, my);
 				}
 				graph.setConnected(connectVert, v, arrowMode);
 				connecting = false;
@@ -470,12 +538,24 @@ void mouse_move(int x, int y) {
 void mouse_drag(int x, int y) {
 	float lastMouseX = mouseX;
 	float lastMouseY = mouseY;
+	float lastMx = mouseX;
+	float lastMy = mouseY;
+	if(showGrid) {
+		lastMx = snapX(lastMouseX);
+		lastMy = snapY(lastMouseY);
+	}
 	mouseX = x * zoom + translateX;
 	mouseY = y * zoom + translateY;
+	float mx = mouseX;
+	float my = mouseY;
+	if(showGrid) {
+		mx = snapX(mouseX);
+		my = snapY(mouseY);
+	}
 	if(dragging) {
 		for(Vertex *v : graph.selected) {
-			v->x += mouseX - lastMouseX;
-			v->y += mouseY - lastMouseY;
+			v->x += mx - lastMx;
+			v->y += my - lastMy;
 		}
 	}
 	if(translating) {
@@ -502,6 +582,8 @@ void key_press(unsigned char key, int x, int y) {
 		setArrowMode(ARROW_FORWARD);
 	}else if(key == 'b') {
 		setArrowMode(ARROW_BACKWARD);
+	}else if(key == 'g') {
+		showGrid = !showGrid;
 	}else if(key >= '0' && key <= '9') {
 		for(Vertex *v : graph.selected) {
 			v->color = (key - '0');
@@ -528,7 +610,13 @@ void key_press(unsigned char key, int x, int y) {
 		graphCopy = copySelected(copyX, copyY);
 	}else if(key == 22 && (glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
 		// Ctrl + V
-		pasteSubgraph(graphCopy, mouseX - copyX, mouseY - copyY);
+		float mx = mouseX;
+		float my = mouseY;
+		if(showGrid) {
+			mx = snapX(mx);
+			my = snapY(my);
+		}
+		pasteSubgraph(graphCopy, mx - copyX, my - copyY);
 	}
 	display();
 }
