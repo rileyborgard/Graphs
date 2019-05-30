@@ -4,6 +4,8 @@
 
 #include <cstdio>
 #include <vector>
+#include <unordered_set>
+#include <unordered_map>
 
 using namespace std;
 
@@ -12,9 +14,8 @@ struct Vertex {
 	float y;
 	int color;
 	bool selected;
-	vector<Vertex*> adjout;
-	vector<Vertex*> adjin;
-	unsigned int index;
+	unordered_map<Vertex*, bool> adjout;
+	unordered_set<Vertex*> adjin;
 };
 
 class Graph {
@@ -33,6 +34,7 @@ public:
 	void mergeSelected();
 	void select(Vertex *v, bool s);
 	void selectAll(bool s);
+	void selectEdge(Vertex *v, Vertex *w);
 
 	void setDisconnected(Vertex *v, Vertex *w);
 	void setConnected(Vertex *v, Vertex *w);
@@ -40,8 +42,8 @@ public:
 	void setArrow(Vertex *v, Vertex *w);
 	void addArrow(Vertex *v, Vertex *w);
 
-	vector<Vertex*> vertices;
-	vector<Vertex*> selected;
+	unordered_set<Vertex*> vertices;
+	unordered_set<Vertex*> selected;
 };
 
 #endif
