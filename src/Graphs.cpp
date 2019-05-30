@@ -40,6 +40,7 @@ float col[10][3] = {{1, 1, 1}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {1, 1, 0}, {0, 1
 		{1, 0, 1}, {1, 0.5f, 0}, {0.5f, 0.5f, 0.5f}, {0.5, 0.25, 0}};
 float highlightCol[3] = {0, 0.75, 0};
 float selectCol[3] = {0, 0.5, 1};
+float edgeSelectCol[3] = {1, 0.5, 0};
 float outlineCol[3] = {0, 0, 0};
 float backgroundCol[3] = {1, 1, 1};
 float removeCol[3] = {1, 0, 0};
@@ -306,6 +307,8 @@ void display() {
 		for(pair<Vertex*, bool> p : v->adjout) {
 			if(removing && intersecting(v->x, v->y, p.first->x, p.first->y, removeMouseX, removeMouseY, mouseX, mouseY)) {
 				glColor3f(removeCol[0], removeCol[1], removeCol[2]);
+			}else if(p.second || (edgeSelect && intersecting(v->x, v->y, p.first->x, p.first->y, edgeSelectMouseX, edgeSelectMouseY, mouseX, mouseY))) {
+				glColor3f(edgeSelectCol[0], edgeSelectCol[1], edgeSelectCol[2]);
 			}else if(v->selected && p.first->selected) {
 				glColor3f(selectCol[0], selectCol[1], selectCol[2]);
 			}else {
@@ -326,6 +329,11 @@ void display() {
 	if(removing) {
 		glColor3f(removeCol[0], removeCol[1], removeCol[2]);
 		glVertex2f(removeMouseX, removeMouseY);
+		glVertex2f(mouseX, mouseY);
+	}
+	if(edgeSelect) {
+		glColor3f(highlightCol[0], highlightCol[1], highlightCol[2]);
+		glVertex2f(edgeSelectMouseX, edgeSelectMouseY);
 		glVertex2f(mouseX, mouseY);
 	}
 	if(mode == MODE_EXTEND) {
@@ -470,6 +478,13 @@ void mouse_press(int button, int state, int x, int y) {
 				delete p.second;
 			}
 		}else if(mode == MODE_EDGESELECT) {
+			if(!(glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
+				for(Vertex *v : graph.vertices) {
+					for(pair<Vertex*, bool> p : v->adjout) {
+						graph.selectEdge(v, p.first, false);
+					}
+				}
+			}
 			edgeSelectMouseX = mouseX;
 			edgeSelectMouseY = mouseY;
 			edgeSelect = true;
@@ -500,11 +515,12 @@ void mouse_press(int button, int state, int x, int y) {
 		}else if(mode == MODE_EDGESELECT && edgeSelect) {
 			for(Vertex *v : graph.vertices) {
 				for(pair<Vertex*, bool> p : v->adjout) {
-					if(intersecting(v->x, v->y, p.first->x, p.first->y, removeMouseX, removeMouseY, mouseX, mouseY)) {
-						graph.selectEdge(v, p.first);
+					if(intersecting(v->x, v->y, p.first->x, p.first->y, edgeSelectMouseX, edgeSelectMouseY, mouseX, mouseY)) {
+						graph.selectEdge(v, p.first, true);
 					}
 				}
 			}
+			edgeSelect = false;
 		}
 	}else if(button == GLUT_MIDDLE_BUTTON) {
 		translating = state == GLUT_DOWN;

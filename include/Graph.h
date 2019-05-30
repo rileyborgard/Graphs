@@ -34,7 +34,7 @@ public:
 	void mergeSelected();
 	void select(Vertex *v, bool s);
 	void selectAll(bool s);
-	void selectEdge(Vertex *v, Vertex *w);
+	void selectEdge(Vertex *v, Vertex *w, bool s);
 
 	void setDisconnected(Vertex *v, Vertex *w);
 	void setConnected(Vertex *v, Vertex *w);

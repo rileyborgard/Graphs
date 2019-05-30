@@ -144,8 +144,13 @@ void Graph::selectAll(bool s) {
 		selected.clear();
 	}
 }
-void Graph::selectEdge(Vertex *v, Vertex *w) {
-
+void Graph::selectEdge(Vertex *v, Vertex *w, bool s) {
+	if(adjacent(v, w)) {
+		v->adjout[w] = s;
+	}
+	if(adjacent(w, v)) {
+		w->adjout[v] = s;
+	}
 }
 
 
