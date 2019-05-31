@@ -3,8 +3,9 @@
 
 #include <fstream>
 #include <string>
-#include <windows.h>
-#include <gl\gl.h>
+//#include <windows.h>
+#include <GL/gl.h>
+#include <cstring>
 
 #define BFG_RS_NONE  0x0      // Blend flags
 #define BFG_RS_ALPHA 0x1

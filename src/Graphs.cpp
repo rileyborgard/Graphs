@@ -6,6 +6,7 @@
 #include <set>
 #include <cstdlib>
 #include <string>
+#include <chrono>
 #include <BitmapFontClass.h>
 
 #define MODE_SELECT 0
@@ -17,6 +18,8 @@
 #define ARROW_UNDIRECTED 0
 #define ARROW_FORWARD 1
 #define ARROW_BACKWARD 2
+
+#define FPS 30
 
 using namespace std;
 
@@ -67,6 +70,8 @@ bool connecting = false;
 bool translating = false;
 bool removing = false;
 bool showGrid = false;
+
+bool updateDisplay = false;
 
 unordered_map<Vertex*, Vertex*> graphCopy;
 float copyX;
@@ -558,12 +563,12 @@ void mouse_press(int button, int state, int x, int y) {
 		mouseX = x * zoom + translateX;
 		mouseY = y * zoom + translateY;
 	}
-	display();
+	updateDisplay = true;
 }
 void mouse_move(int x, int y) {
 	mouseX = x * zoom + translateX;
 	mouseY = y * zoom + translateY;
-	display();
+	updateDisplay = true;
 }
 void mouse_drag(int x, int y) {
 	float lastMouseX = mouseX;
@@ -594,7 +599,7 @@ void mouse_drag(int x, int y) {
 		mouseX = x * zoom + translateX;
 		mouseY = y * zoom + translateY;
 	}
-	display();
+	updateDisplay = true;
 }
 
 void key_press(unsigned char key, int x, int y) {
@@ -650,7 +655,7 @@ void key_press(unsigned char key, int x, int y) {
 		}
 		pasteSubgraph(graphCopy, mx - copyX, my - copyY);
 	}
-	display();
+	updateDisplay = true;
 }
 void key_release(unsigned char key, int x, int y) {
 
@@ -663,6 +668,17 @@ void resize(int w, int h) {
 	glLoadIdentity();
 	gluOrtho2D(0.0, width, height, 0.0);
 	glViewport(0,0,width,height);
+}
+
+long long start = 0;
+void idle() {
+	long long end = std::chrono::system_clock::now().time_since_epoch().count();
+	while(end - start > 1000 / FPS) {
+		if(updateDisplay) {
+			display();
+		}
+		start = end;
+	}
 }
 
 int main(int argc, char **argv) {
@@ -682,6 +698,7 @@ int main(int argc, char **argv) {
 	glutKeyboardFunc(key_press);
 	glutKeyboardUpFunc(key_release);
 	glutReshapeFunc(resize);
+	glutIdleFunc(idle);
 
 	glutDisplayFunc(display);
 
