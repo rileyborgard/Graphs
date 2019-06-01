@@ -539,10 +539,14 @@ void mouse_press(int button, int state, int x, int y) {
 	}else if(button == GLUT_RIGHT_BUTTON && state == GLUT_UP) {
 		if(mode == MODE_CREATE && removing) {
 			for(Vertex *v : graph.vertices) {
+				vector<Vertex*> vec;
 				for(pair<Vertex*, bool> p : v->adjout) {
 					if(intersecting(v->x, v->y, p.first->x, p.first->y, removeMouseX, removeMouseY, mouseX, mouseY)) {
-						graph.setDisconnected(v, p.first);
+						vec.push_back(p.first);
 					}
+				}
+				for(Vertex *w : vec) {
+					graph.setDisconnected(v, w);
 				}
 			}
 			removing = false;
