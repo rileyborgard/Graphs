@@ -682,6 +682,7 @@ void idle() {
 			display();
 		}
 		start = end;
+		updateDisplay = false;
 	}
 }
 
