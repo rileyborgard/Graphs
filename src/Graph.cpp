@@ -3,6 +3,7 @@
 #include <queue>
 #include <algorithm>
 #include <iostream>
+#include <cmath>
 
 Graph::Graph() {
 	// TODO Auto-generated constructor stub
@@ -196,4 +197,29 @@ void Graph::addArrow(Vertex *v, Vertex *w) {
 	}
 	v->adjout[w] = false;
 	w->adjin.insert(v);
+}
+
+void Graph::normalize(float dt) {
+	unordered_map<Vertex*, pair<float, float>> m;
+	for(Vertex *v : vertices) {
+		float totx = 0, toty = 0;
+		for(Vertex *w : vertices) {
+			if(v == w) continue;
+			float dx = w->x - v->x;
+			float dy = w->y - v->y;
+			float r = hypot(dx, dy);
+			if(w->adjin.count(v)) {
+				totx += dx * r;
+				toty += dy * r;
+			}
+			totx -= dx / r * 10'000;
+			toty -= dy / r * 10'000;
+		}
+		m[v] = {totx, toty};
+	}
+	for(Vertex *v : vertices) {
+		float r = dt;
+		v->x += m[v].first * r;
+		v->y += m[v].second * r;
+	}
 }

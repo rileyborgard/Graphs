@@ -42,6 +42,8 @@ public:
 	void setArrow(Vertex *v, Vertex *w);
 	void addArrow(Vertex *v, Vertex *w);
 
+	void normalize(float dt);
+
 	unordered_set<Vertex*> vertices;
 	unordered_set<Vertex*> selected;
 };

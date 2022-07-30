@@ -68,6 +68,7 @@ bool edgeSelect = false;
 bool dragging = false;
 bool connecting = false;
 bool translating = false;
+bool normalizing = false;
 bool removing = false;
 bool showGrid = false;
 
@@ -635,6 +636,10 @@ void key_press(unsigned char key, int x, int y) {
 		}
 	}else if(key == 'm') {
 		graph.mergeSelected();
+	}else if(key == 'n') {
+		normalizing = true;
+		graph.normalize(0.0001);
+		updateDisplay = true;
 	}else if(key == 1 && (glutGetModifiers() & GLUT_ACTIVE_CTRL)) {
 		// Ctrl + A
 		if(graph.vertices.size() == graph.selected.size()) {
@@ -662,7 +667,9 @@ void key_press(unsigned char key, int x, int y) {
 	updateDisplay = true;
 }
 void key_release(unsigned char key, int x, int y) {
-
+	if(key == 'n') {
+		normalizing = false;
+	}
 }
 
 void resize(int w, int h) {
@@ -677,7 +684,7 @@ void resize(int w, int h) {
 long long start = 0;
 void idle() {
 	long long end = std::chrono::system_clock::now().time_since_epoch().count();
-	while(end - start > 1000 / FPS) {
+	if(end - start > 1000 / FPS) {
 		if(updateDisplay) {
 			display();
 		}
